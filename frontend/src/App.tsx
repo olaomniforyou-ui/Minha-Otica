@@ -113,7 +113,7 @@ export default function App() {
               </PublicOnly>
             }
           />
-          <Route path="/developer" element={<DeveloperDashboard />} />
+          <Route path="/dev" element={<DeveloperDashboard />} />
 
           <Route
             path="/select-company"
