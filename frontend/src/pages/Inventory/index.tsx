@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Package, Tag, Bookmark, Layers } from 'lucide-react'
+import { Package, Tag, Bookmark, Layers, ShoppingCart } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { pullFromServer } from '@/services/sync.service'
 import { PageLoader } from '@/components/ui/Spinner'
@@ -8,14 +8,16 @@ import ProductsTab   from './Products'
 import CategoriesTab from './Categories'
 import BrandsTab     from './Brands'
 import ModelsTab     from './Models'
+import PurchasesTab  from './Purchases'
 
-type Tab = 'products' | 'categories' | 'brands' | 'models'
+type Tab = 'products' | 'categories' | 'brands' | 'models' | 'purchases'
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'products',   label: 'Produtos',   icon: Package },
   { id: 'categories', label: 'Categorias', icon: Tag },
   { id: 'brands',     label: 'Marcas',     icon: Bookmark },
   { id: 'models',     label: 'Modelos',    icon: Layers },
+  { id: 'purchases',  label: 'Compras',    icon: ShoppingCart },
 ]
 
 export default function ProductsPage() {
@@ -31,8 +33,8 @@ export default function ProductsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Produtos</h1>
-        <p className="text-sm text-slate-500">Gerencie produtos, categorias, marcas e modelos</p>
+        <h1 className="text-2xl font-bold text-slate-900">Estoque</h1>
+        <p className="text-sm text-slate-500">Gerencie produtos, categorias, marcas, modelos e compras</p>
       </div>
 
       <div className="flex gap-1 overflow-x-auto border-b border-slate-200 pb-0">
@@ -62,6 +64,7 @@ export default function ProductsPage() {
             {activeTab === 'categories' && <CategoriesTab />}
             {activeTab === 'brands'     && <BrandsTab />}
             {activeTab === 'models'     && <ModelsTab />}
+            {activeTab === 'purchases'  && <PurchasesTab />}
           </>
         )}
       </div>

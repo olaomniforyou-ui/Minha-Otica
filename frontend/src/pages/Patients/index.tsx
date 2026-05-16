@@ -1,10 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Search, Phone, Mail, UserCircle2, Pencil } from 'lucide-react'
+import { Plus, Search, Phone, Mail, UserCircle2, Pencil, FileText, Shield, Clock, Star } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
 import { PageLoader } from '@/components/ui/Spinner'
 import { PatientModal } from '@/components/patients/PatientModal'
+import { PatientPrescriptionsModal } from '@/components/patients/PatientPrescriptionsModal'
+import { PatientLGPDModal } from '@/components/patients/PatientLGPDModal'
+import { PatientTimelineModal } from '@/components/patients/PatientTimelineModal'
+import { PatientPostSaleModal } from '@/components/patients/PatientPostSaleModal'
 import { formatDate, formatPhone, getInitials, cn } from '@/lib/utils'
 import { getPatients } from '@/services/patients.service'
 import { pullFromServer } from '@/services/sync.service'
@@ -23,8 +27,12 @@ export default function PatientsPage() {
   const [search,   setSearch]   = useState('')
   const [loading,  setLoading]  = useState(true)
   const [ready,    setReady]    = useState(!navigator.onLine)
-  const [modal,    setModal]    = useState(false)
-  const [editing,  setEditing]  = useState<Patient | null>(null)
+  const [modal,               setModal]               = useState(false)
+  const [editing,             setEditing]             = useState<Patient | null>(null)
+  const [prescriptionsPatient, setPrescriptionsPatient] = useState<Patient | null>(null)
+  const [lgpdPatient,      setLgpdPatient]      = useState<Patient | null>(null)
+  const [timelinePatient,  setTimelinePatient]  = useState<Patient | null>(null)
+  const [postSalePatient,  setPostSalePatient]  = useState<Patient | null>(null)
 
   useEffect(() => {
     if (!navigator.onLine) { setReady(true); return }
@@ -123,12 +131,23 @@ export default function PatientsPage() {
                         <td className="px-5 py-3 text-slate-600">{p.email ?? '—'}</td>
                         <td className="px-5 py-3 text-slate-600">{formatDate(p.created_at)}</td>
                         <td className="px-5 py-3">
-                          <button
-                            onClick={() => openEdit(p)}
-                            className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
-                          >
-                            <Pencil size={11} /> Editar
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => setTimelinePatient(p)} title="Linha do tempo" className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-50 transition-colors">
+                              <Clock size={11} /> Timeline
+                            </button>
+                            <button onClick={() => setPrescriptionsPatient(p)} className="flex items-center gap-1 rounded-lg border border-blue-200 px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors">
+                              <FileText size={11} /> Receitas
+                            </button>
+                            <button onClick={() => setPostSalePatient(p)} title="Pós-venda / NPS" className="flex items-center gap-1 rounded-lg border border-amber-200 px-2 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50 transition-colors">
+                              <Star size={11} /> Pós-venda
+                            </button>
+                            <button onClick={() => setLgpdPatient(p)} title="LGPD" className="flex items-center gap-1 rounded-lg border border-indigo-200 px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 transition-colors">
+                              <Shield size={11} /> LGPD
+                            </button>
+                            <button onClick={() => openEdit(p)} className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                              <Pencil size={11} /> Editar
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -159,12 +178,23 @@ export default function PatientsPage() {
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <span className="text-xs text-slate-400">{formatDate(p.created_at)}</span>
-                    <button
-                      onClick={() => openEdit(p)}
-                      className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                    >
-                      <Pencil size={11} /> Editar
-                    </button>
+                    <div className="flex gap-1">
+                      <button onClick={() => setTimelinePatient(p)} className="flex items-center rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-50">
+                        <Clock size={11} />
+                      </button>
+                      <button onClick={() => setPrescriptionsPatient(p)} className="flex items-center rounded-lg border border-blue-200 px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50">
+                        <FileText size={11} />
+                      </button>
+                      <button onClick={() => setPostSalePatient(p)} className="flex items-center rounded-lg border border-amber-200 px-2 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50">
+                        <Star size={11} />
+                      </button>
+                      <button onClick={() => setLgpdPatient(p)} className="flex items-center rounded-lg border border-indigo-200 px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50">
+                        <Shield size={11} />
+                      </button>
+                      <button onClick={() => openEdit(p)} className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50">
+                        <Pencil size={11} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -179,6 +209,39 @@ export default function PatientsPage() {
         patient={editing}
         onSuccess={() => { handleClose(); load() }}
       />
+
+      {prescriptionsPatient && (
+        <PatientPrescriptionsModal
+          open={!!prescriptionsPatient}
+          onClose={() => setPrescriptionsPatient(null)}
+          patient={prescriptionsPatient}
+        />
+      )}
+
+      {lgpdPatient && (
+        <PatientLGPDModal
+          open={!!lgpdPatient}
+          onClose={() => setLgpdPatient(null)}
+          patient={lgpdPatient}
+          onForgotten={load}
+        />
+      )}
+
+      {timelinePatient && (
+        <PatientTimelineModal
+          open={!!timelinePatient}
+          onClose={() => setTimelinePatient(null)}
+          patient={timelinePatient}
+        />
+      )}
+
+      {postSalePatient && (
+        <PatientPostSaleModal
+          open={!!postSalePatient}
+          onClose={() => setPostSalePatient(null)}
+          patient={postSalePatient}
+        />
+      )}
     </div>
   )
 }

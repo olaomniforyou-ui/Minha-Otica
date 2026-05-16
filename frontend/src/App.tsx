@@ -18,8 +18,9 @@ import SuppliersPage from '@/pages/Suppliers'
 import StockPage     from '@/pages/Stock'
 import OrdersPage    from '@/pages/Orders'
 import LabStatusPage from '@/pages/LabStatus'
-import AnalyticsPage from '@/pages/Analytics'
-import EmployeesPage from '@/pages/Employees'
+import AnalyticsPage  from '@/pages/Analytics'
+import EmployeesPage  from '@/pages/Employees'
+import FinancialPage  from '@/pages/Financial'
 
 import { AdminLayout } from '@/components/admin-layout/AdminLayout'
 import AdminDashboard from '@/pages/Admin/AdminDashboard'
@@ -31,6 +32,7 @@ import AdminRevenue   from '@/pages/Admin/Revenue'
 import AdminProfile   from '@/pages/Admin/AdminProfile'
 import ProfilePage    from '@/pages/Profile'
 import SelectCompany from '@/pages/SelectCompany'
+import DeveloperDashboard from '@/pages/DeveloperDashboard'
 import { useAdminAuthStore } from '@/store/adminAuthStore'
 
 const queryClient = new QueryClient({
@@ -111,6 +113,7 @@ export default function App() {
               </PublicOnly>
             }
           />
+          <Route path="/developer" element={<DeveloperDashboard />} />
 
           <Route
             path="/select-company"
@@ -138,6 +141,7 @@ export default function App() {
             <Route path="orders"     element={<OrdersPage />} />
             <Route path="lab"        element={<LabStatusPage />} />
             <Route path="analytics"  element={<AnalyticsPage />} />
+            <Route path="financial"  element={<FinancialPage />} />
             <Route path="employees"  element={<EmployeesPage />} />
             <Route path="profile"    element={<ProfilePage />} />
           </Route>

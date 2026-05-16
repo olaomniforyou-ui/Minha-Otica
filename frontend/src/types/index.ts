@@ -45,6 +45,8 @@ export interface Profile {
 
 // ── PACIENTE ─────────────────────────────────────────────────
 export type Gender = 'M' | 'F' | 'outro'
+export type PatientOrigin = 'indicacao' | 'instagram' | 'google' | 'facebook' | 'walk_in' | 'whatsapp' | 'convenio' | 'outro'
+export type LensType = 'monofocal' | 'bifocal' | 'multifocal' | 'ocupacional' | 'solar' | 'contato'
 
 export interface Patient {
   id: string
@@ -59,6 +61,13 @@ export interface Patient {
   gender?: Gender
   address?: Address
   notes?: string
+  // CRM
+  origin?: PatientOrigin
+  tags?: string[]
+  frame_preference?: string
+  lens_preference?: string
+  next_repurchase_date?: string
+  is_recurring?: boolean
   is_active: boolean
   created_at: string
   updated_at: string
@@ -83,6 +92,7 @@ export interface Prescription {
   oe_add?: number
   oe_dnp?: number
   oe_altura?: number
+  lens_type?: LensType
   doctor_name?: string
   crm?: string
   exam_date?: string
@@ -406,6 +416,108 @@ export interface LabTracking {
   created_at: string
   updated_at: string
   service_order?: ServiceOrder
+}
+
+// ── PÓS-VENDA ────────────────────────────────────────────────
+export type PostSaleType = 'nps' | 'garantia' | 'assistencia' | 'ajuste' | 'reclamacao' | 'recompra'
+
+export const POST_SALE_LABELS: Record<PostSaleType, string> = {
+  nps:         'NPS / Satisfação',
+  garantia:    'Garantia',
+  assistencia: 'Assistência',
+  ajuste:      'Ajuste',
+  reclamacao:  'Reclamação',
+  recompra:    'Recompra',
+}
+
+export interface PostSale {
+  id: string
+  company_id: string
+  patient_id: string
+  type: PostSaleType
+  nps_score?: number
+  notes?: string
+  resolved: boolean
+  created_by?: string
+  created_at: string
+}
+
+export type PostSaleFormData = Omit<PostSale, 'id' | 'company_id' | 'created_at'>
+
+// ── COMPRAS ──────────────────────────────────────────────────
+export type PurchaseOrderStatus = 'rascunho' | 'enviado' | 'parcial' | 'recebido' | 'cancelado'
+
+export const PURCHASE_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
+  rascunho:  'Rascunho',
+  enviado:   'Enviado',
+  parcial:   'Recebido Parcialmente',
+  recebido:  'Recebido',
+  cancelado: 'Cancelado',
+}
+
+export interface PurchaseItem {
+  id: string
+  purchase_order_id: string
+  product_id?: string
+  description: string
+  quantity: number
+  quantity_received?: number
+  unit_cost: number
+  total_cost: number
+  product?: Product
+}
+
+export type PurchaseItemFormData = Omit<PurchaseItem, 'id' | 'purchase_order_id' | 'product'>
+
+export interface PurchaseOrder {
+  id: string
+  company_id: string
+  order_number: string
+  supplier_id?: string
+  status: PurchaseOrderStatus
+  total_amount: number
+  notes?: string
+  expected_delivery?: string
+  received_at?: string
+  created_by?: string
+  created_at: string
+  updated_at: string
+  supplier?: Supplier
+  items?: PurchaseItem[]
+}
+
+export type PurchaseOrderFormData = {
+  supplier_id?: string
+  notes?: string
+  expected_delivery?: string
+  items: PurchaseItemFormData[]
+}
+
+// ── LGPD ─────────────────────────────────────────────────────
+export interface ConsentLog {
+  id: string
+  company_id: string
+  patient_id: string
+  user_id?: string
+  terms_version: string
+  created_at: string
+}
+
+export type AuditAction =
+  | 'view_prescription'
+  | 'export_patient_data'
+  | 'forget_patient'
+  | 'create_patient'
+  | 'update_patient'
+
+export interface AuditLog {
+  id: string
+  company_id: string
+  user_id?: string
+  action: AuditAction | string
+  table_name: string
+  record_id: string
+  created_at: string
 }
 
 // ── SINCRONIZAÇÃO ─────────────────────────────────────────────

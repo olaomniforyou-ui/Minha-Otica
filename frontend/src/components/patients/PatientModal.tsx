@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { Camera, Upload, Loader2, CheckCircle2, AlertCircle, X, ScanLine } from 'lucide-react'
+import { Camera, Upload, Loader2, CheckCircle2, AlertCircle, X, ScanLine, Shield } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { createPatient, updatePatient } from '@/services/patients.service'
+import { recordConsent } from '@/services/lgpd.service'
 import type { Patient, PatientFormData } from '@/types'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
@@ -15,9 +16,23 @@ interface PatientModalProps {
   patient?:   Patient | null
 }
 
+const ORIGIN_OPTIONS = [
+  { value: '',          label: 'Não informado' },
+  { value: 'indicacao', label: 'Indicação' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'google',    label: 'Google' },
+  { value: 'facebook',  label: 'Facebook' },
+  { value: 'walk_in',   label: 'Walk-in (entrou na loja)' },
+  { value: 'whatsapp',  label: 'WhatsApp' },
+  { value: 'convenio',  label: 'Convênio' },
+  { value: 'outro',     label: 'Outro' },
+]
+
 const empty: PatientFormData = {
   full_name: '', cpf: '', phone: '', whatsapp: '',
   email: '', gender: 'M', notes: '', is_active: true,
+  origin: undefined, tags: [], frame_preference: '', lens_preference: '',
+  next_repurchase_date: '', is_recurring: false,
 }
 
 type ScanState = 'idle' | 'loading' | 'success' | 'error'
@@ -37,33 +52,44 @@ async function toBase64(file: File): Promise<{ data: string; mediaType: string }
 }
 
 export function PatientModal({ open, onClose, onSuccess, patient }: PatientModalProps) {
-  const [formData,  setFormData]  = useState<PatientFormData>(empty)
-  const [loading,   setLoading]   = useState(false)
-  const [error,     setError]     = useState<string | null>(null)
-  const [scanState, setScanState] = useState<ScanState>('idle')
-  const [scanError, setScanError] = useState<string | null>(null)
-  const [preview,   setPreview]   = useState<string | null>(null)
+  const [formData,    setFormData]    = useState<PatientFormData>(empty)
+  const [loading,     setLoading]     = useState(false)
+  const [error,       setError]       = useState<string | null>(null)
+  const [scanState,   setScanState]   = useState<ScanState>('idle')
+  const [scanError,   setScanError]   = useState<string | null>(null)
+  const [preview,     setPreview]     = useState<string | null>(null)
+  const [lgpdOk,      setLgpdOk]      = useState(false)
+  const [tagInput,    setTagInput]     = useState('')
+  const [showCRM,     setShowCRM]     = useState(false)
 
   const fileRef   = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) return
-    setError(null); setScanState('idle'); setScanError(null)
+    setError(null); setScanState('idle'); setScanError(null); setLgpdOk(false); setTagInput('')
     clearPreview()
     if (patient) {
       setFormData({
-        full_name: patient.full_name,
-        cpf:       patient.cpf      || '',
-        phone:     patient.phone,
-        whatsapp:  patient.whatsapp || '',
-        email:     patient.email    || '',
-        gender:    patient.gender   || 'M',
-        notes:     patient.notes    || '',
-        is_active: patient.is_active,
+        full_name:            patient.full_name,
+        cpf:                  patient.cpf                   || '',
+        phone:                patient.phone,
+        whatsapp:             patient.whatsapp              || '',
+        email:                patient.email                 || '',
+        gender:               patient.gender                || 'M',
+        notes:                patient.notes                 || '',
+        is_active:            patient.is_active,
+        origin:               patient.origin,
+        tags:                 patient.tags                  || [],
+        frame_preference:     patient.frame_preference      || '',
+        lens_preference:      patient.lens_preference       || '',
+        next_repurchase_date: patient.next_repurchase_date  || '',
+        is_recurring:         patient.is_recurring          || false,
       })
+      setShowCRM(!!(patient.origin || patient.tags?.length || patient.frame_preference || patient.lens_preference))
     } else {
       setFormData(empty)
+      setShowCRM(false)
     }
   }, [patient, open])
 
@@ -124,6 +150,7 @@ export function PatientModal({ open, onClose, onSuccess, patient }: PatientModal
         onSuccess?.(updated)
       } else {
         const created = await createPatient(formData)
+        if (lgpdOk) recordConsent(created.id).catch(() => {})
         onSuccess?.(created)
       }
       onClose()
@@ -252,9 +279,118 @@ export function PatientModal({ open, onClose, onSuccess, patient }: PatientModal
           placeholder="Alergias, preferências, etc."
         />
 
+        {/* Seção CRM — colapsível */}
+        <div className="rounded-xl border border-slate-200">
+          <button
+            type="button"
+            onClick={() => setShowCRM(v => !v)}
+            className="flex w-full items-center justify-between px-4 py-3 text-left text-xs font-semibold text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
+          >
+            <span>Informações CRM (origem, tags, preferências)</span>
+            <span className="text-slate-400">{showCRM ? '▲' : '▼'}</span>
+          </button>
+          {showCRM && (
+            <div className="border-t border-slate-100 px-4 pb-4 pt-3 space-y-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">Origem do Cliente</label>
+                  <select
+                    value={formData.origin ?? ''}
+                    onChange={e => setFormData(prev => ({ ...prev, origin: e.target.value as any || undefined }))}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none bg-white"
+                  >
+                    {ORIGIN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+                <Input
+                  label="Próxima Recompra"
+                  type="date"
+                  value={formData.next_repurchase_date ?? ''}
+                  onChange={e => setFormData(prev => ({ ...prev, next_repurchase_date: e.target.value }))}
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Input
+                  label="Preferência de Armação"
+                  value={formData.frame_preference ?? ''}
+                  onChange={e => setFormData(prev => ({ ...prev, frame_preference: e.target.value }))}
+                  placeholder="Ex: acetato, titanio, sem aro..."
+                />
+                <Input
+                  label="Preferência de Lente"
+                  value={formData.lens_preference ?? ''}
+                  onChange={e => setFormData(prev => ({ ...prev, lens_preference: e.target.value }))}
+                  placeholder="Ex: antirreflexo, transitions..."
+                />
+              </div>
+              {/* Tags */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">Tags</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {(formData.tags ?? []).map(tag => (
+                    <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                      {tag}
+                      <button type="button" onClick={() => setFormData(prev => ({ ...prev, tags: prev.tags?.filter(t => t !== tag) }))} className="hover:text-blue-900">×</button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={e => setTagInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ',') {
+                        e.preventDefault()
+                        const tag = tagInput.trim()
+                        if (tag && !(formData.tags ?? []).includes(tag)) {
+                          setFormData(prev => ({ ...prev, tags: [...(prev.tags ?? []), tag] }))
+                        }
+                        setTagInput('')
+                      }
+                    }}
+                    placeholder="Digite e pressione Enter..."
+                    className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none"
+                  />
+                </div>
+              </div>
+              {/* Recorrente */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.is_recurring ?? false}
+                  onChange={e => setFormData(prev => ({ ...prev, is_recurring: e.target.checked }))}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                />
+                <span className="text-xs text-slate-700 font-medium">Cliente recorrente</span>
+              </label>
+            </div>
+          )}
+        </div>
+
+        {/* Consentimento LGPD — apenas no cadastro */}
+        {!patient && (
+          <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 cursor-pointer hover:border-indigo-300 transition-colors">
+            <input
+              type="checkbox"
+              checked={lgpdOk}
+              onChange={e => setLgpdOk(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <div className="flex items-start gap-2">
+              <Shield size={14} className="mt-0.5 shrink-0 text-indigo-500" />
+              <span className="text-xs text-slate-700">
+                O paciente foi informado e concordou com os{' '}
+                <span className="font-semibold text-indigo-600">Termos de Uso e Política de Privacidade</span>{' '}
+                (LGPD — Lei 13.709/2018). O consentimento será registrado com data e hora.
+              </span>
+            </div>
+          </label>
+        )}
+
         <div className="flex justify-end gap-3 pt-2">
           <Button variant="ghost" type="button" onClick={onClose}>Cancelar</Button>
-          <Button type="submit" loading={loading}>
+          <Button type="submit" loading={loading} disabled={!patient && !lgpdOk}>
             {patient ? 'Salvar Alterações' : 'Cadastrar Paciente'}
           </Button>
         </div>

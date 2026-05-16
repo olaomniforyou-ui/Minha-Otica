@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingCart, Package, Truck, ArrowLeftRight,
-  Users, User, ClipboardList, FlaskConical, BarChart3,
+  Users, User, ClipboardList, FlaskConical, BarChart3, Wallet,
   HelpCircle, LogOut, Eye, Menu, X, PlusCircle, Contact, Building2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { to: '/suppliers',  label: 'Fornecedores', icon: Truck },
   { to: '/stock',      label: 'Estoque',     icon: ArrowLeftRight },
   { to: '/lab',        label: 'Laboratório', icon: FlaskConical },
+  { to: '/financial',  label: 'Financeiro',  icon: Wallet },
   { to: '/analytics',  label: 'Relatórios',  icon: BarChart3 },
 ]
 
