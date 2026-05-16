@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Search, Phone, Mail, UserCircle2, Pencil, FileText, Shield, Clock, Star } from 'lucide-react'
+import { Plus, Search, Phone, Mail, UserCircle2, Pencil, FileText, Shield, Clock, Star, Filter, ChevronDown, ChevronUp, X, Sparkles } from 'lucide-react'
+import { addYears, isAfter, parseISO } from 'date-fns'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
@@ -10,7 +11,7 @@ import { PatientLGPDModal } from '@/components/patients/PatientLGPDModal'
 import { PatientTimelineModal } from '@/components/patients/PatientTimelineModal'
 import { PatientPostSaleModal } from '@/components/patients/PatientPostSaleModal'
 import { formatDate, formatPhone, getInitials, cn } from '@/lib/utils'
-import { getPatients } from '@/services/patients.service'
+import { getPatients, type PatientFilters } from '@/services/patients.service'
 import { pullFromServer } from '@/services/sync.service'
 import type { Patient } from '@/types'
 
@@ -22,11 +23,26 @@ function colorOf(name: string) {
   return COLORS[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length]
 }
 
+const ORIGIN_OPTIONS = [
+  { value: 'indicacao', label: 'Indicação' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'google',    label: 'Google' },
+  { value: 'facebook',  label: 'Facebook' },
+  { value: 'walk_in',   label: 'Walk-in' },
+  { value: 'whatsapp',  label: 'WhatsApp' },
+  { value: 'convenio',  label: 'Convênio' },
+]
+
 export default function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([])
   const [search,   setSearch]   = useState('')
   const [loading,  setLoading]  = useState(true)
   const [ready,    setReady]    = useState(!navigator.onLine)
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState<PatientFilters>({
+    is_active: true,
+  })
+
   const [modal,               setModal]               = useState(false)
   const [editing,             setEditing]             = useState<Patient | null>(null)
   const [prescriptionsPatient, setPrescriptionsPatient] = useState<Patient | null>(null)
@@ -41,9 +57,9 @@ export default function PatientsPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    setPatients(await getPatients(search || undefined))
+    setPatients(await getPatients({ ...filters, search: search || undefined }))
     setLoading(false)
-  }, [search])
+  }, [search, filters])
 
   useEffect(() => { if (ready) load() }, [load, ready])
 
@@ -77,13 +93,87 @@ export default function PatientsPage() {
         </Button>
       </div>
 
-      {/* Busca */}
-      <Input
-        placeholder="Buscar por nome, CPF ou telefone…"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        icon={<Search size={16} />}
-      />
+      {/* Busca e Filtros */}
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              placeholder="Buscar por nome, CPF ou telefone…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-400/10 transition-all"
+            />
+          </div>
+          <Button
+            variant="ghost"
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn(
+              'h-10 px-3 border border-slate-200',
+              showFilters && 'bg-slate-100 border-slate-300'
+            )}
+          >
+            <Filter size={16} className={cn('sm:mr-2', showFilters ? 'text-blue-600' : 'text-slate-500')} />
+            <span className="hidden sm:inline">Filtros</span>
+            {showFilters ? <ChevronUp size={14} className="ml-1 hidden sm:inline" /> : <ChevronDown size={14} className="ml-1 hidden sm:inline" />}
+          </Button>
+        </div>
+
+        {showFilters && (
+          <Card className="p-4 border-dashed bg-slate-50/50">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:grid-cols-4">
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-500">Origem</label>
+                <select
+                  value={filters.origin ?? ''}
+                  onChange={e => setFilters(prev => ({ ...prev, origin: e.target.value || undefined }))}
+                  className="w-full h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-400"
+                >
+                  <option value="">Todas as origens</option>
+                  {ORIGIN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-500">Status</label>
+                <select
+                  value={filters.is_active === undefined ? '' : filters.is_active ? 'true' : 'false'}
+                  onChange={e => setFilters(prev => ({ ...prev, is_active: e.target.value === '' ? undefined : e.target.value === 'true' }))}
+                  className="w-full h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-400"
+                >
+                  <option value="">Todos</option>
+                  <option value="true">Ativos</option>
+                  <option value="false">Inativos</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-500">Recorrência</label>
+                <select
+                  value={filters.is_recurring === undefined ? '' : filters.is_recurring ? 'true' : 'false'}
+                  onChange={e => setFilters(prev => ({ ...prev, is_recurring: e.target.value === '' ? undefined : e.target.value === 'true' }))}
+                  className="w-full h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-400"
+                >
+                  <option value="">Todos</option>
+                  <option value="true">Recorrentes</option>
+                  <option value="false">Não recorrentes</option>
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFilters({ is_active: true })}
+                  className="h-9 w-full text-slate-500"
+                >
+                  <X size={14} className="mr-2" /> Limpar Filtros
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
 
       {loading ? (
         <PageLoader />
@@ -108,7 +198,7 @@ export default function PatientsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/60">
-                      {['Paciente', 'CPF', 'Telefone', 'E-mail', 'Cadastro', ''].map((h) => (
+                      {['Paciente', 'CPF', 'Telefone', 'Recorrência', 'Cadastro', ''].map((h) => (
                         <th key={h} className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                           {h}
                         </th>
@@ -128,7 +218,27 @@ export default function PatientsPage() {
                         </td>
                         <td className="px-5 py-3 text-slate-600">{p.cpf ?? '—'}</td>
                         <td className="px-5 py-3 text-slate-600">{formatPhone(p.phone)}</td>
-                        <td className="px-5 py-3 text-slate-600">{p.email ?? '—'}</td>
+                        <td className="px-5 py-3">
+                          {p.last_purchase ? (
+                            (() => {
+                              const nextRebuy = addYears(parseISO(p.last_purchase), 1)
+                              const overdue = isAfter(new Date(), nextRebuy)
+                              return (
+                                <div className={cn(
+                                  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium",
+                                  overdue 
+                                    ? "bg-rose-50 text-rose-600 border border-rose-100" 
+                                    : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                )}>
+                                  <Sparkles size={10} />
+                                  Sugestão: {formatDate(nextRebuy.toISOString())}
+                                </div>
+                              )
+                            })()
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )}
+                        </td>
                         <td className="px-5 py-3 text-slate-600">{formatDate(p.created_at)}</td>
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-1.5">
@@ -173,6 +283,21 @@ export default function PatientsPage() {
                       )}
                       {p.email && (
                         <span className="flex items-center gap-1 truncate"><Mail size={11} />{p.email}</span>
+                      )}
+                      {p.last_purchase && (
+                        (() => {
+                          const nextRebuy = addYears(parseISO(p.last_purchase), 1)
+                          const overdue = isAfter(new Date(), nextRebuy)
+                          return (
+                            <span className={cn(
+                              "flex items-center gap-1 font-bold",
+                              overdue ? "text-rose-600" : "text-emerald-600"
+                            )}>
+                              <Sparkles size={11} />
+                              Recompra: {formatDate(nextRebuy.toISOString())}
+                            </span>
+                          )
+                        })()
                       )}
                     </div>
                   </div>

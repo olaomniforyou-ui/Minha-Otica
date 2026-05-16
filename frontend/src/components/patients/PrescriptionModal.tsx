@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { PrescriptionFields } from '@/components/sales/PrescriptionFields'
 import { createPrescription, updatePrescription } from '@/services/prescriptions.service'
+import { uploadFile } from '@/services/storage.service'
+import { Paperclip, X, Upload, FileText } from 'lucide-react'
 import type { Patient, Prescription, PrescriptionFormData, LensType } from '@/types'
 
 const LENS_TYPE_OPTIONS: { value: LensType | ''; label: string }[] = [
@@ -39,10 +41,15 @@ export function PrescriptionModal({ open, onClose, patient, prescription, onSucc
   const [lensType,    setLensType]    = useState<LensType | ''>('')
   const [loading,     setLoading]     = useState(false)
   const [error,       setError]       = useState<string | null>(null)
+  
+  const [file,        setFile]        = useState<File | null>(null)
+  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) return
     setError(null)
+    setFile(null)
     if (prescription) {
       setFields({
         od_esf:      prescription.od_esf,
@@ -64,11 +71,13 @@ export function PrescriptionModal({ open, onClose, patient, prescription, onSucc
       setValidUntil(prescription.valid_until ?? '')
       setNotes(prescription.notes ?? '')
       setLensType(prescription.lens_type ?? '')
+      setAttachmentUrl(prescription.attachment_url ?? null)
     } else {
       setFields(emptyFields)
       setValidUntil('')
       setNotes('')
       setLensType('')
+      setAttachmentUrl(null)
     }
   }, [open, prescription])
 
@@ -77,22 +86,31 @@ export function PrescriptionModal({ open, onClose, patient, prescription, onSucc
     setLoading(true)
     setError(null)
     try {
+      let currentAttachmentUrl = attachmentUrl
+
+      // Upload do arquivo se houver um novo
+      if (file) {
+        currentAttachmentUrl = await uploadFile('prescriptions', 'files', file)
+      }
+
       let saved: Prescription
       const lens_type = lensType || undefined
       if (prescription) {
         saved = await updatePrescription(prescription.id, {
           ...fields,
           lens_type,
-          valid_until: validUntil || undefined,
-          notes:       notes || undefined,
+          valid_until:    validUntil || undefined,
+          notes:          notes || undefined,
+          attachment_url: currentAttachmentUrl || undefined,
         })
       } else {
         saved = await createPrescription({
           ...fields,
-          patient_id:  patient.id,
+          patient_id:     patient.id,
           lens_type,
-          valid_until: validUntil || undefined,
-          notes:       notes || undefined,
+          valid_until:    validUntil || undefined,
+          notes:          notes || undefined,
+          attachment_url: currentAttachmentUrl || undefined,
         } as PrescriptionFormData)
       }
       onSuccess(saved)
@@ -136,32 +154,73 @@ export function PrescriptionModal({ open, onClose, patient, prescription, onSucc
         />
 
         {/* Campos extras */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Tipo de Lente</label>
-            <select
-              value={lensType}
-              onChange={e => setLensType(e.target.value as LensType | '')}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none bg-white"
-            >
-              {LENS_TYPE_OPTIONS.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Tipo de Lente</label>
+              <select
+                value={lensType}
+                onChange={e => setLensType(e.target.value as LensType | '')}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none bg-white"
+              >
+                {LENS_TYPE_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+            <Input
+              label="Válida até"
+              type="date"
+              value={validUntil}
+              onChange={e => setValidUntil(e.target.value)}
+            />
           </div>
-          <Input
-            label="Válida até"
-            type="date"
-            value={validUntil}
-            onChange={e => setValidUntil(e.target.value)}
-          />
-          <Input
-            label="Observações"
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            placeholder="Indicação, restrições, etc."
-          />
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-700">Anexo (Imagem/PDF da Receita)</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*,application/pdf"
+                onChange={e => setFile(e.target.files?.[0] || null)}
+              />
+              {file || attachmentUrl ? (
+                <div className="flex flex-1 items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    {file ? <Upload size={14} className="text-blue-500" /> : <Paperclip size={14} className="text-blue-500" />}
+                    <span className="truncate text-xs font-medium text-blue-700">
+                      {file ? file.name : 'Arquivo anexado'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setFile(null); setAttachmentUrl(null) }}
+                    className="ml-2 rounded-full p-0.5 text-blue-400 hover:bg-blue-100 hover:text-blue-600"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all"
+                >
+                  <Upload size={14} /> Fazer upload do documento
+                </button>
+              )}
+            </div>
+          </div>
         </div>
+
+        <Input
+          label="Observações"
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          placeholder="Indicação, restrições, etc."
+        />
 
         <div className="flex justify-end gap-3 pt-2">
           <Button variant="ghost" type="button" onClick={onClose}>

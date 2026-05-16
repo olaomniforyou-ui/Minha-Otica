@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Shield, Download, Trash2, CheckCircle2, AlertTriangle, Clock, Loader2 } from 'lucide-react'
+import { Shield, Download, Trash2, CheckCircle2, AlertTriangle, Clock, Loader2, FileText } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { getPatientConsents, exportPatientData, forgetPatient } from '@/services/lgpd.service'
+import { getPatientConsents, exportPatientData, forgetPatient, generateConsentPDF } from '@/services/lgpd.service'
 import { formatDate } from '@/lib/utils'
 import type { Patient, ConsentLog } from '@/types'
 
@@ -135,6 +135,27 @@ export function PatientLGPDModal({ open, onClose, patient, onForgotten }: Props)
                     icon={<Download size={13} />}
                   >
                     Exportar
+                  </Button>
+                </div>
+
+                {/* Imprimir termo */}
+                <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-100">
+                      <FileText size={15} className="text-indigo-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">Termo de Consentimento (PDF)</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Gera o documento formal de aceite dos termos para assinatura física se necessário.</p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => generateConsentPDF(patient)}
+                    icon={<FileText size={13} />}
+                  >
+                    Imprimir
                   </Button>
                 </div>
 

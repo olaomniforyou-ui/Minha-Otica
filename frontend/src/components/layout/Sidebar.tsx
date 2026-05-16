@@ -3,25 +3,59 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingCart, Package, Truck, ArrowLeftRight,
   Users, User, ClipboardList, FlaskConical, BarChart3, Wallet,
-  HelpCircle, LogOut, Eye, Menu, X, PlusCircle, Contact, Building2
+  HelpCircle, LogOut, Eye, Menu, X, PlusCircle, Contact, Building2,
+  ShoppingBag, Code2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { signOut } from '@/services/auth.service'
 import { useAuthStore } from '@/store/authStore'
 import { Dropdown, DropdownItem } from '@/components/ui/Dropdown'
 
-const NAV_ITEMS = [
-  { to: '/',           label: 'Dashboard',   icon: LayoutDashboard },
-  { to: '/sales',      label: 'Vendas',      icon: ShoppingCart },
-  { to: '/orders',     label: 'Orçamentos',  icon: ClipboardList },
-  { to: '/patients',   label: 'Pacientes',   icon: Users },
-  { to: '/employees',  label: 'Funcionários', icon: Contact },
-  { to: '/products',   label: 'Produtos',    icon: Package },
-  { to: '/suppliers',  label: 'Fornecedores', icon: Truck },
-  { to: '/stock',      label: 'Estoque',     icon: ArrowLeftRight },
-  { to: '/lab',        label: 'Laboratório', icon: FlaskConical },
-  { to: '/financial',  label: 'Financeiro',  icon: Wallet },
-  { to: '/analytics',  label: 'Relatórios',  icon: BarChart3 },
+interface NavItem { to: string; label: string; icon: React.ElementType }
+interface NavGroup { group: string; items: NavItem[] }
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    group: 'Geral',
+    items: [
+      { to: '/',           label: 'Dashboard',    icon: LayoutDashboard },
+    ]
+  },
+  {
+    group: 'Clientes & CRM',
+    items: [
+      { to: '/patients',   label: 'Clientes',     icon: Users },
+    ]
+  },
+  {
+    group: 'Produtos & Estoque',
+    items: [
+      { to: '/products',   label: 'Produtos',     icon: Package },
+      { to: '/stock',      label: 'Estoque',      icon: ArrowLeftRight },
+      { to: '/suppliers',  label: 'Fornecedores', icon: Truck },
+    ]
+  },
+  {
+    group: 'Comercial & OS',
+    items: [
+      { to: '/orders',     label: 'Orçamentos',   icon: ClipboardList },
+      { to: '/sales',      label: 'Vendas / PDV', icon: ShoppingCart },
+      { to: '/lab',        label: 'Laboratório',  icon: FlaskConical },
+    ]
+  },
+  {
+    group: 'Financeiro',
+    items: [
+      { to: '/financial',  label: 'Financeiro',   icon: Wallet },
+    ]
+  },
+  {
+    group: 'Gestão',
+    items: [
+      { to: '/employees',  label: 'Funcionários', icon: Contact },
+      { to: '/analytics',  label: 'Relatórios',   icon: BarChart3 },
+    ]
+  },
 ]
 
 interface SidebarProps {
@@ -89,38 +123,68 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Navegação */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              onClick={onClose}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary-900 text-white'
-                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
-                )
-              }
-            >
-              <Icon className="h-4.5 w-4.5 flex-shrink-0" size={18} />
-              {label}
-            </NavLink>
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.group}>
+              <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {group.group}
+              </p>
+              <div className="space-y-0.5">
+                {group.items.map(({ to, label, icon: Icon }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={to === '/'}
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900',
+                      )
+                    }
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
+
+          {/* Atalho rápido */}
+          <div className="pt-4 border-t border-slate-50">
+            <button
+              onClick={handleNewPrescription}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-bold text-blue-600 hover:bg-blue-50 transition-all"
+            >
+              <PlusCircle className="h-4 w-4" />
+              Novo Orçamento / OS
+            </button>
+          </div>
         </nav>
 
         {/* Rodapé */}
         <div className="px-3 py-4 space-y-1 border-t border-slate-100">
-          {/* Nova OS */}
-          <button
-            onClick={handleNewPrescription}
-            className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-900 transition-colors mb-3"
-          >
-            <PlusCircle size={16} />
-            Nova Prescrição
-          </button>
+          {/* Developer Dashboard link if admin */}
+          {profile?.role === 'admin' && (
+            <NavLink
+              to="/dev"
+              onClick={onClose}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
+                )
+              }
+            >
+              <Code2 size={18} />
+              Developer OS
+            </NavLink>
+          )}
 
           {/* Trocar Ótica */}
           {availableProfiles.length > 1 && (

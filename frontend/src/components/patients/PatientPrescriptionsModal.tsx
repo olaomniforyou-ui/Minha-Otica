@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, FileText, Pencil, Trash2, AlertTriangle, Clock, CheckCircle2, Loader2 } from 'lucide-react'
+import { Plus, FileText, Pencil, Trash2, AlertTriangle, Clock, CheckCircle2, Loader2, ExternalLink, Paperclip } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { PrescriptionModal } from './PrescriptionModal'
@@ -141,33 +141,47 @@ function PrescriptionCard({
       )}
 
       {/* Ações */}
-      <div className="flex items-center justify-end gap-2 pt-1">
-        {confirmDelete ? (
-          <>
-            <span className="text-xs text-red-600 font-medium mr-1">Excluir definitivamente?</span>
-            <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>
-              Não
-            </Button>
-            <Button size="sm" variant="danger" onClick={onDelete}>
-              Sim, excluir
-            </Button>
-          </>
-        ) : (
-          <>
-            <button
-              onClick={onEdit}
-              className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <div>
+          {prescription.attachment_url && (
+            <a
+              href={prescription.attachment_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 rounded-lg border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-100 transition-colors"
             >
-              <Pencil size={11} /> Editar
-            </button>
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-500 hover:bg-red-50 transition-colors"
-            >
-              <Trash2 size={11} /> Excluir
-            </button>
-          </>
-        )}
+              <Paperclip size={11} /> Ver Anexo
+            </a>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {confirmDelete ? (
+            <>
+              <span className="text-xs text-red-600 font-medium mr-1">Excluir definitivamente?</span>
+              <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>
+                Não
+              </Button>
+              <Button size="sm" variant="danger" onClick={onDelete}>
+                Sim, excluir
+              </Button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onEdit}
+                className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+              >
+                <Pencil size={11} /> Editar
+              </button>
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-500 hover:bg-red-50 transition-colors"
+              >
+                <Trash2 size={11} /> Excluir
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

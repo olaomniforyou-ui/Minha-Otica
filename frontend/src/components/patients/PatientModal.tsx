@@ -33,6 +33,7 @@ const empty: PatientFormData = {
   email: '', gender: 'M', notes: '', is_active: true,
   origin: undefined, tags: [], frame_preference: '', lens_preference: '',
   next_repurchase_date: '', is_recurring: false,
+  last_purchase: '',
 }
 
 type ScanState = 'idle' | 'loading' | 'success' | 'error'
@@ -85,6 +86,7 @@ export function PatientModal({ open, onClose, onSuccess, patient }: PatientModal
         lens_preference:      patient.lens_preference       || '',
         next_repurchase_date: patient.next_repurchase_date  || '',
         is_recurring:         patient.is_recurring          || false,
+        last_purchase:        patient.last_purchase         || '',
       })
       setShowCRM(!!(patient.origin || patient.tags?.length || patient.frame_preference || patient.lens_preference))
     } else {

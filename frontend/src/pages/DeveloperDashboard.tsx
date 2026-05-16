@@ -36,13 +36,13 @@ const MODULES_23: {
   { id:  3, name: 'Estoque Avançado',      status: 'in-progress', progress: 70, sprint: 3, tasks: ['Produtos + Categorias ✓', 'Fornecedores ✓', 'Marcas/Modelos ✓', 'Movimentações ✓', 'Inventário Cíclico'] },
   { id:  4, name: 'Multiempresa (SaaS)',   status: 'partial',     progress: 45, sprint: 1, tasks: ['Isolamento Tenant', 'Hierarquia Matriz/Filial'] },
   { id:  5, name: 'Planos e Assinaturas', status: 'partial',     progress:  8, sprint: 1, tasks: ['Billing', 'Trial', 'Limites por Plano'] },
-  { id:  6, name: 'LGPD e Segurança',     status: 'in-progress', progress: 60, sprint: 2, tasks: ['Consentimento ✓', 'Logs Auditoria ✓', 'Exportação ✓', 'Anonimização ✓'] },
-  { id:  7, name: 'Prontuário Óptico',    status: 'in-progress', progress: 72, sprint: 2, tasks: ['Histórico Grau ✓', 'OD/OE Completo ✓', 'Tipo de Lente ✓', 'Upload Anexos'] },
+  { id:  6, name: 'LGPD e Segurança',     status: 'in-progress', progress: 95, sprint: 2, tasks: ['Consentimento (Digital + PDF) ✓', 'Logs Auditoria ✓', 'Exportação ✓', 'Anonimização ✓'] },
+  { id:  7, name: 'Prontuário Óptico',    status: 'in-progress', progress: 92, sprint: 2, tasks: ['Histórico Grau ✓', 'OD/OE Completo ✓', 'Tipo de Lente ✓', 'Upload Anexos (Storage) ✓'] },
   { id:  8, name: 'Laboratório/Produção', status: 'partial',     progress: 10, sprint: 5, tasks: ['OS Automática', 'Kanban Produção', 'Notif. Cliente'] },
-  { id:  9, name: 'Garantia e Pós-venda', status: 'in-progress', progress: 45, sprint: 2, tasks: ['NPS ✓', 'Garantia ✓', 'Assistência ✓', 'Ajuste ✓', 'Reclamação ✓', 'Recompra ✓'] },
+  { id:  9, name: 'Garantia e Pós-venda', status: 'in-progress', progress: 75, sprint: 2, tasks: ['NPS ✓', 'Garantia ✓', 'Assistência ✓', 'Ajuste ✓', 'Reclamação ✓', 'Recompra ✓'] },
   { id: 10, name: 'Convênios/Parceiros',  status: 'pending',     progress:  0, sprint: 4, tasks: ['Tabelas Especiais', 'Autorizações', 'Faturamento'] },
   { id: 11, name: 'Comissões Avançadas',  status: 'pending',     progress:  0, sprint: 6, tasks: ['Regras por Meta', 'Ranking Vendas', 'Pag. Recebimento'] },
-  { id: 12, name: 'Marketing e CRM',      status: 'in-progress', progress: 65, sprint: 2, tasks: ['Cadastro Pacientes ✓', 'Origem/Tags/Preferências ✓', 'Linha do Tempo ✓', 'Pós-venda/NPS ✓'] },
+  { id: 12, name: 'Marketing e CRM',      status: 'in-progress', progress: 98, sprint: 2, tasks: ['Cadastro Pacientes ✓', 'Origem/Tags/Preferências ✓', 'Filtros Avançados ✓', 'Recompra Sugerida ✓'] },
   { id: 13, name: 'Omnichannel Real',     status: 'pending',     progress:  0, sprint: 7, tasks: ['WhatsApp API', 'Inbox Única', 'Chatbot IA'] },
   { id: 14, name: 'E-commerce/Catálogo',  status: 'pending',     progress:  0, sprint: 7, tasks: ['Vitrine Online', 'Link Pagamento', 'Retirada em Loja'] },
   { id: 15, name: 'Integ. Pagamento',     status: 'pending',     progress:  0, sprint: 4, tasks: ['Mercado Pago', 'Pix Automático', 'Cartão Recorrente'] },
@@ -88,6 +88,10 @@ const SPRINTS: { code: string; name: string; period: string; done: boolean; acti
 
 // ─── Logs — eventos reais do projeto (mais recentes primeiro) ──────────────
 const LOGS = [
+  { id: 23, date: '16/05/2026 03:45', action: 'LGPD: Geração de Termo de Consentimento formal em PDF (jsPDF)', user: 'Antigravity', type: 'success', category: 'Sprint 2' },
+  { id: 24, date: '16/05/2026 03:40', action: 'Receitas: Upload de anexos (imagem/PDF) integrado ao Supabase Storage', user: 'Antigravity', type: 'success', category: 'Sprint 2' },
+  { id: 25, date: '16/05/2026 03:35', action: 'CRM: Filtros avançados por origem, recorrente e status de atividade', user: 'Antigravity', type: 'success', category: 'Sprint 2' },
+  { id: 26, date: '16/05/2026 03:30', action: 'Inteligência: Sugestão automática de próxima recompra baseada em 1 ano', user: 'Antigravity', type: 'success', category: 'Sprint 2' },
   { id: 20, date: '16/05/2026 03:30', action: 'Analytics completo: receita diária, tendência, top produtos, NPS e formas de pagamento', user: 'Antigravity', type: 'success', category: 'Sprint 7' },
   { id: 21, date: '16/05/2026 03:20', action: 'Módulo Financeiro: caixa diário, fluxo semanal, lançamentos recentes e breakdown por pagamento', user: 'Antigravity', type: 'success', category: 'Sprint 6' },
   { id: 22, date: '16/05/2026 03:10', action: 'Sidebar: item "Financeiro" adicionado; rota /financial registrada no App.tsx', user: 'Antigravity', type: 'success', category: 'Frontend' },

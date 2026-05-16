@@ -10,8 +10,16 @@ function getCompanyId(): string {
   return company.id
 }
 
-export async function getPatients(search?: string): Promise<Patient[]> {
+export interface PatientFilters {
+  search?: string
+  origin?: string
+  is_recurring?: boolean
+  is_active?: boolean
+}
+
+export async function getPatients(filters: PatientFilters = {}): Promise<Patient[]> {
   const company_id = getCompanyId()
+  const { search, origin, is_recurring, is_active = true } = filters
 
   // Fallback: se Dexie estiver vazio, busca no Supabase
   const count = await db.patients.where('company_id').equals(company_id).count()
@@ -26,23 +34,30 @@ export async function getPatients(search?: string): Promise<Patient[]> {
     } catch {}
   }
 
-  if (search) {
-    const term = search.toLowerCase()
-    return db.patients
-      .filter(
-        (p) =>
-          !!p.is_active &&
-          p.company_id === company_id &&
-          (p.full_name.toLowerCase().includes(term) ||
-            (p.cpf ?? '').includes(term) ||
-            (p.phone ?? '').includes(term)),
-      )
-      .toArray()
+  let collection = db.patients.filter(p => p.company_id === company_id)
+
+  if (is_active !== undefined) {
+    collection = collection.filter(p => p.is_active === is_active)
   }
 
-  return db.patients
-    .filter(p => !!p.is_active && p.company_id === company_id)
-    .toArray()
+  if (search) {
+    const term = search.toLowerCase()
+    collection = collection.filter(p => 
+      p.full_name.toLowerCase().includes(term) ||
+      (p.cpf ?? '').includes(term) ||
+      (p.phone ?? '').includes(term)
+    )
+  }
+
+  if (origin) {
+    collection = collection.filter(p => p.origin === origin)
+  }
+
+  if (is_recurring !== undefined) {
+    collection = collection.filter(p => p.is_recurring === is_recurring)
+  }
+
+  return collection.toArray()
 }
 
 export async function getPatientById(id: string): Promise<Patient | undefined> {

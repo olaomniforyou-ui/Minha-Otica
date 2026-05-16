@@ -68,6 +68,7 @@ export interface Patient {
   lens_preference?: string
   next_repurchase_date?: string
   is_recurring?: boolean
+  last_purchase?: string
   is_active: boolean
   created_at: string
   updated_at: string
@@ -98,6 +99,7 @@ export interface Prescription {
   exam_date?: string
   valid_until?: string
   notes?: string
+  attachment_url?: string
   created_by?: string
   created_at: string
   patient?: Patient
