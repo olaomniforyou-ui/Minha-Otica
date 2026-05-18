@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Package, Tag, Bookmark, Layers, ShoppingCart } from 'lucide-react'
+import { Package, Tag, Bookmark, Layers, ShoppingCart, ClipboardCheck, GitCompareArrows } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { pullFromServer } from '@/services/sync.service'
 import { PageLoader } from '@/components/ui/Spinner'
@@ -9,8 +9,10 @@ import CategoriesTab from './Categories'
 import BrandsTab     from './Brands'
 import ModelsTab     from './Models'
 import PurchasesTab  from './Purchases'
+import ContagemTab   from './Contagem'
+import CotacoesTab   from './Cotacoes'
 
-type Tab = 'products' | 'categories' | 'brands' | 'models' | 'purchases'
+type Tab = 'products' | 'categories' | 'brands' | 'models' | 'purchases' | 'contagem' | 'cotacoes'
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'products',   label: 'Produtos',   icon: Package },
@@ -18,6 +20,8 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'brands',     label: 'Marcas',     icon: Bookmark },
   { id: 'models',     label: 'Modelos',    icon: Layers },
   { id: 'purchases',  label: 'Compras',    icon: ShoppingCart },
+  { id: 'contagem',   label: 'Contagem',   icon: ClipboardCheck },
+  { id: 'cotacoes',   label: 'Cotações',   icon: GitCompareArrows },
 ]
 
 export default function ProductsPage() {
@@ -65,6 +69,8 @@ export default function ProductsPage() {
             {activeTab === 'brands'     && <BrandsTab />}
             {activeTab === 'models'     && <ModelsTab />}
             {activeTab === 'purchases'  && <PurchasesTab />}
+            {activeTab === 'contagem'   && <ContagemTab />}
+            {activeTab === 'cotacoes'   && <CotacoesTab />}
           </>
         )}
       </div>

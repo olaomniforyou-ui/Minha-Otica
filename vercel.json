@@ -1,0 +1,12 @@
+{
+  "experimentalServices": {
+    "frontend": {
+      "entrypoint": "frontend",
+      "outputPrefix": "/"
+    },
+    "backend": {
+      "entrypoint": "backend",
+      "outputPrefix": "/_/backend"
+    }
+  }
+}

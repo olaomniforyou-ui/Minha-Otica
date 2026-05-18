@@ -20,7 +20,17 @@ import OrdersPage    from '@/pages/Orders'
 import LabStatusPage from '@/pages/LabStatus'
 import AnalyticsPage  from '@/pages/Analytics'
 import EmployeesPage  from '@/pages/Employees'
-import FinancialPage  from '@/pages/Financial'
+import FinancialPage   from '@/pages/Financial'
+import ConveniosPage   from '@/pages/Convenios'
+import ComissoesPage   from '@/pages/Comissoes'
+import PostSalesPage   from '@/pages/PostSales'
+import HelpPage        from '@/pages/Help'
+import PricingPage     from '@/pages/Pricing'
+import CatalogPage     from '@/pages/Catalog'
+import WhatsAppPage    from '@/pages/WhatsApp'
+import PixPage         from '@/pages/Pix'
+import FiscalPage        from '@/pages/Fiscal'
+import RelatorioRedePage from '@/pages/RelatorioRede'
 
 import { AdminLayout } from '@/components/admin-layout/AdminLayout'
 import AdminDashboard from '@/pages/Admin/AdminDashboard'
@@ -114,6 +124,7 @@ export default function App() {
             }
           />
           <Route path="/dev" element={<DeveloperDashboard />} />
+          <Route path="/catalogo/:companyId" element={<CatalogPage />} />
 
           <Route
             path="/select-company"
@@ -143,7 +154,16 @@ export default function App() {
             <Route path="analytics"  element={<AnalyticsPage />} />
             <Route path="financial"  element={<FinancialPage />} />
             <Route path="employees"  element={<EmployeesPage />} />
+            <Route path="convenios"  element={<ConveniosPage />} />
+            <Route path="comissoes"  element={<ComissoesPage />} />
+            <Route path="post-sales" element={<PostSalesPage />} />
+            <Route path="help"       element={<HelpPage />} />
             <Route path="profile"    element={<ProfilePage />} />
+            <Route path="pricing"    element={<PricingPage />} />
+            <Route path="whatsapp"  element={<WhatsAppPage />} />
+            <Route path="pix"       element={<PixPage />} />
+            <Route path="fiscal"         element={<FiscalPage />} />
+            <Route path="relatorio-rede" element={<RelatorioRedePage />} />
           </Route>
 
           {/* Rotas Admin */}

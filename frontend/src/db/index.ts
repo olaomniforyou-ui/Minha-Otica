@@ -4,7 +4,7 @@ import type {
   ServiceOrder, ServiceOrderItem, LabTracking,
   Supplier, StockMovement, SyncQueueItem,
   Brand, Model, Sale, SaleItem,
-  PurchaseOrder, PurchaseItem,
+  PurchaseOrder, PurchaseItem, Expense, Convenio,
 } from '@/types'
 
 // ── Tipos locais (com flag de sync) ──────────────────────────
@@ -25,6 +25,8 @@ export type LocalSale             = LocalRecord<Sale>
 export type LocalSaleItem         = LocalRecord<SaleItem>
 export type LocalPurchaseOrder    = LocalRecord<PurchaseOrder>
 export type LocalPurchaseItem     = LocalRecord<PurchaseItem>
+export type LocalExpense          = LocalRecord<Expense>
+export type LocalConvenio         = LocalRecord<Convenio>
 
 // ── Banco Dexie ───────────────────────────────────────────────
 export class MinhaOticaDB extends Dexie {
@@ -43,6 +45,8 @@ export class MinhaOticaDB extends Dexie {
   lab_trackings!:       Table<LocalLabTracking>
   purchase_orders!:     Table<LocalPurchaseOrder>
   purchase_items!:      Table<LocalPurchaseItem>
+  expenses!:            Table<LocalExpense>
+  convenios!:           Table<LocalConvenio>
   sync_queue!:          Table<SyncQueueItem, number>
 
   constructor() {
@@ -171,6 +175,16 @@ export class MinhaOticaDB extends Dexie {
     this.version(8).stores({
       purchase_orders: 'id, company_id, order_number, supplier_id, status, created_at, updated_at, _pending_sync',
       purchase_items:  'id, purchase_order_id, product_id',
+    })
+
+    // v9 — adiciona expenses (Contas a Pagar)
+    this.version(9).stores({
+      expenses: 'id, company_id, category, due_date, is_paid, created_at, _pending_sync',
+    })
+
+    // v10 — adiciona convênios
+    this.version(10).stores({
+      convenios: 'id, company_id, tipo, is_active, updated_at, _pending_sync',
     })
   }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, User, Package, Loader2, Clock } from 'lucide-react'
-import { getCompanyDetail, updateSubscription, listPlans } from '@/services/admin.service'
+import { ArrowLeft, Users, User, Package, Loader2, Clock, GitBranch, Building2, Check } from 'lucide-react'
+import { getCompanyDetail, updateSubscription, listPlans, listAllCompanies, getFiliais, setParentCompany } from '@/services/admin.service'
 import type { Plan } from '@/types'
 
 const CARD = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }
@@ -12,18 +12,26 @@ const roleLabel: Record<string,string> = { admin:'Admin', gerente:'Gerente', ate
 export default function CompanyDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [data, setData] = useState<any>(null)
-  const [plans, setPlans] = useState<Plan[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [data,      setData]      = useState<any>(null)
+  const [plans,     setPlans]     = useState<Plan[]>([])
+  const [allCos,    setAllCos]    = useState<any[]>([])
+  const [filiais,   setFiliais]   = useState<any[]>([])
+  const [loading,   setLoading]   = useState(true)
+  const [saving,    setSaving]    = useState(false)
+  const [savingHier,setSavingHier]= useState(false)
+  const [hierSaved, setHierSaved] = useState(false)
+  const [parentId,  setParentId]  = useState<string>('')
   const [form, setForm] = useState({ planId: '', status: 'trial', billingCycle: 'monthly', amount: '0', notes: '' })
 
   useEffect(() => {
     if (!id) return
-    Promise.all([getCompanyDetail(id), listPlans()])
-      .then(([d, p]) => {
+    Promise.all([getCompanyDetail(id), listPlans(), listAllCompanies(), getFiliais(id)])
+      .then(([d, p, cos, fils]) => {
         setData(d)
         setPlans(p)
+        setAllCos(cos.filter((c: any) => c.id !== id))
+        setFiliais(fils)
+        setParentId(d.company?.parent_company_id ?? '')
         if (d.subscription) {
           setForm({
             planId: d.subscription.plan_id || '',
@@ -36,6 +44,16 @@ export default function CompanyDetail() {
       })
       .finally(() => setLoading(false))
   }, [id])
+
+  async function handleSaveHierarchy() {
+    if (!id) return
+    setSavingHier(true)
+    try {
+      await setParentCompany(id, parentId || null)
+      setHierSaved(true)
+      setTimeout(() => setHierSaved(false), 2500)
+    } finally { setSavingHier(false) }
+  }
 
   async function handleSave() {
     if (!id) return
@@ -125,6 +143,64 @@ export default function CompanyDetail() {
           {saving ? <Loader2 size={15} className="animate-spin" /> : null}
           {saving ? 'Salvando...' : 'Salvar Assinatura'}
         </button>
+      </div>
+
+      {/* Hierarquia Matriz/Filial */}
+      <div className="rounded-2xl p-5 space-y-4" style={CARD}>
+        <p className="text-sm font-semibold text-white flex items-center gap-2">
+          <GitBranch size={15} className="text-indigo-400" /> Hierarquia Matriz / Filial
+        </p>
+
+        {/* Selecionar empresa-mãe */}
+        <div>
+          <label className="block text-xs text-slate-500 mb-1.5">Empresa Matriz (opcional)</label>
+          <div className="flex gap-2">
+            <select
+              value={parentId}
+              onChange={e => setParentId(e.target.value)}
+              className="flex-1 rounded-xl px-3 py-2.5 text-sm text-white outline-none"
+              style={CARD}
+            >
+              <option value="">— Nenhuma (esta é uma Matriz) —</option>
+              {allCos.map((c: any) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleSaveHierarchy}
+              disabled={savingHier}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-60"
+              style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
+            >
+              {savingHier ? <Loader2 size={14} className="animate-spin" /> : hierSaved ? <Check size={14} /> : null}
+              {hierSaved ? 'Salvo!' : 'Salvar'}
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-600 mt-1.5">
+            {parentId
+              ? `Esta empresa é filial de: ${allCos.find((c: any) => c.id === parentId)?.name ?? '...'}`
+              : 'Sem matriz — esta empresa está no topo da hierarquia.'}
+          </p>
+        </div>
+
+        {/* Filiais desta empresa */}
+        {filiais.length > 0 && (
+          <div>
+            <p className="text-xs text-slate-500 mb-2">Filiais vinculadas ({filiais.length})</p>
+            <div className="space-y-1.5">
+              {filiais.map((f: any) => (
+                <div key={f.id} className="flex items-center gap-3 rounded-xl px-3 py-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                  <Building2 size={14} className="text-indigo-400 flex-shrink-0" />
+                  <span className="text-sm text-white flex-1">{f.name}</span>
+                  {f.cnpj && <span className="text-[11px] text-slate-500">{f.cnpj}</span>}
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${f.is_active ? 'text-emerald-400 bg-emerald-400/10' : 'text-slate-500 bg-slate-500/10'}`}>
+                    {f.is_active ? 'Ativa' : 'Inativa'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Users table */}

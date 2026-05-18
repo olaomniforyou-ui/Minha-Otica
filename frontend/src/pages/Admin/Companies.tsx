@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Building2, ChevronRight, ToggleLeft, ToggleRight, Loader2 } from 'lucide-react'
+import { Search, Building2, ChevronRight, ToggleLeft, ToggleRight, Loader2, LogIn } from 'lucide-react'
 import { listAllCompanies, toggleCompanyStatus } from '@/services/admin.service'
+import { useAuthStore } from '@/store/authStore'
 import type { CompanyWithSubscription } from '@/types'
 
 const CARD = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }
@@ -10,6 +11,7 @@ const statusLabel: Record<string, string> = { active: 'Ativo', trial: 'Trial', s
 
 export default function AdminCompanies() {
   const navigate = useNavigate()
+  const startImpersonate = useAuthStore(s => s.startImpersonate)
   const [companies, setCompanies] = useState<CompanyWithSubscription[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -30,6 +32,17 @@ export default function AdminCompanies() {
       await toggleCompanyStatus(c.id, !c.is_active)
       setCompanies(prev => prev.map(x => x.id === c.id ? { ...x, is_active: !c.is_active } : x))
     } finally { setToggling(null) }
+  }
+
+  function handleImpersonate(c: CompanyWithSubscription) {
+    startImpersonate({
+      id: c.id, name: c.name, cnpj: c.cnpj,
+      email: c.email, phone: c.phone,
+      address: c.address, logo_url: c.logo_url,
+      is_active: c.is_active,
+      created_at: c.created_at, updated_at: c.updated_at,
+    } as any)
+    navigate('/')
   }
 
   return (
@@ -116,6 +129,13 @@ export default function AdminCompanies() {
                     {new Date(c.created_at).toLocaleDateString('pt-BR')}
                   </div>
                   <div className="col-span-2 flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => handleImpersonate(c)}
+                      title="Impersonar empresa"
+                      className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors"
+                    >
+                      <LogIn size={14} /> Entrar
+                    </button>
                     <button
                       onClick={() => handleToggle(c)}
                       disabled={toggling === c.id}

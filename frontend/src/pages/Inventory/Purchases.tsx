@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Plus, ShoppingCart, PackageCheck, ChevronDown, ChevronUp } from 'lucide-react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Plus, ShoppingCart, PackageCheck, ChevronDown, ChevronUp, Download, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { PageLoader } from '@/components/ui/Spinner'
 import { PurchaseOrderModal } from '@/components/inventory/PurchaseOrderModal'
 import { getPurchaseOrders, updatePurchaseOrderStatus } from '@/services/purchases.service'
-import { formatDate, formatCurrency, cn } from '@/lib/utils'
-import type { PurchaseOrder, PurchaseOrderStatus } from '@/types'
+import { getProducts } from '@/services/products.service'
+import { formatDate, formatCurrency, cn, isLowStock } from '@/lib/utils'
+import type { PurchaseOrder, PurchaseOrderStatus, Product } from '@/types'
 import { PURCHASE_STATUS_LABELS } from '@/types'
 
 const STATUS_COLOR: Record<PurchaseOrderStatus, string> = {
@@ -17,17 +18,51 @@ const STATUS_COLOR: Record<PurchaseOrderStatus, string> = {
   cancelado: 'bg-red-100 text-red-600',
 }
 
+type PeriodFilter = '30d' | '90d' | '12m' | 'tudo'
+
+function exportPurchasesCsv(orders: PurchaseOrder[], period: string) {
+  const header = ['ID', 'Fornecedor', 'Status', 'Data', 'Total (R$)']
+  const lines = orders.map(o => [
+    o.id.slice(-8),
+    o.supplier?.name ?? 'Sem Fornecedor',
+    PURCHASE_STATUS_LABELS[o.status],
+    new Date(o.created_at).toLocaleDateString('pt-BR'),
+    o.total_amount.toFixed(2),
+  ].join(','))
+  const blob = new Blob([[header.join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = `pedidos-compra-${period}-${new Date().toISOString().slice(0,10)}.csv`; a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function PurchasesTab() {
-  const [orders,   setOrders]   = useState<PurchaseOrder[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [modal,    setModal]    = useState(false)
-  const [expanded, setExpanded] = useState<string | null>(null)
-  const [receiving, setReceiving] = useState<PurchaseOrder | null>(null)
+  const [orders,           setOrders]           = useState<PurchaseOrder[]>([])
+  const [loading,          setLoading]          = useState(true)
+  const [modal,            setModal]            = useState(false)
+  const [expanded,         setExpanded]         = useState<string | null>(null)
+  const [receiving,        setReceiving]        = useState<PurchaseOrder | null>(null)
+  const [period,           setPeriod]           = useState<PeriodFilter>('30d')
+  const [lowStockProducts, setLowStockProducts] = useState<Product[]>([])
+
+  const filtered = useMemo(() => {
+    if (period === 'tudo') return orders
+    const days = period === '30d' ? 30 : period === '90d' ? 90 : 365
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days)
+    return orders.filter(o => new Date(o.created_at) >= cutoff)
+  }, [orders, period])
+
+  const totalGasto   = filtered.reduce((s, o) => s + (o.status !== 'cancelado' ? o.total_amount : 0), 0)
+  const totalPendente = filtered.filter(o => o.status === 'enviado' || o.status === 'parcial').reduce((s, o) => s + o.total_amount, 0)
 
   const load = useCallback(async () => {
     setLoading(true)
     setOrders(await getPurchaseOrders())
     setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    getProducts().then(ps => setLowStockProducts(ps.filter(p => isLowStock(p.stock_quantity, p.min_stock_quantity))))
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -42,29 +77,123 @@ export default function PurchasesTab() {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status: 'cancelado' } : o))
   }
 
+  const PERIOD_OPTS: { v: PeriodFilter; l: string }[] = [
+    { v: '30d',  l: '30 dias' },
+    { v: '90d',  l: '90 dias' },
+    { v: '12m',  l: '12 meses' },
+    { v: 'tudo', l: 'Tudo' },
+  ]
+
   return (
     <>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">
-            {loading ? 'Carregando...' : `${orders.length} pedido${orders.length !== 1 ? 's' : ''}`}
-          </p>
-          <Button icon={<Plus size={15} />} onClick={() => setModal(true)}>
-            Novo Pedido
-          </Button>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+          <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
+            {PERIOD_OPTS.map(o => (
+              <button key={o.v} onClick={() => setPeriod(o.v)}
+                className={`px-3 py-1.5 font-medium transition-colors ${period === o.v ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
+                {o.l}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => exportPurchasesCsv(filtered, period)} disabled={filtered.length === 0}>
+              <Download size={14} className="mr-1.5" /> CSV
+            </Button>
+            <Button icon={<Plus size={15} />} onClick={() => setModal(true)}>
+              Novo Pedido
+            </Button>
+          </div>
         </div>
 
-        {loading ? <PageLoader /> : orders.length === 0 ? (
+        {/* Alerta de reposição */}
+        {lowStockProducts.length > 0 && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle size={15} className="text-amber-600 flex-shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-slate-800">
+                  {lowStockProducts.length} produto{lowStockProducts.length !== 1 ? 's' : ''} com estoque abaixo do mínimo
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5 truncate max-w-xs">
+                  {lowStockProducts.slice(0, 3).map(p => p.name).join(', ')}
+                  {lowStockProducts.length > 3 && ` e mais ${lowStockProducts.length - 3}`}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setModal(true)}
+              className="flex-shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700 transition-colors"
+            >
+              Criar Pedido
+            </button>
+          </div>
+        )}
+
+        {/* Cards resumo período */}
+        {!loading && filtered.length > 0 && (
+          <div className="grid grid-cols-3 gap-3">
+            <Card className="p-3 text-center">
+              <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">Total Gasto</p>
+              <p className="text-base font-bold text-slate-900 mt-0.5">{formatCurrency(totalGasto)}</p>
+            </Card>
+            <Card className="p-3 text-center">
+              <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">Pendente</p>
+              <p className={`text-base font-bold mt-0.5 ${totalPendente > 0 ? 'text-amber-600' : 'text-slate-900'}`}>{formatCurrency(totalPendente)}</p>
+            </Card>
+            <Card className="p-3 text-center">
+              <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">Pedidos</p>
+              <p className="text-base font-bold text-slate-900 mt-0.5">{filtered.length}</p>
+            </Card>
+          </div>
+        )}
+
+        {/* Resumo por Fornecedor */}
+        {!loading && filtered.length > 0 && (() => {
+          const bySupplier: Record<string, { name: string; total: number; pendente: number; count: number }> = {}
+          for (const o of filtered) {
+            const id   = o.supplier?.id ?? '__sem_fornecedor__'
+            const name = o.supplier?.name ?? 'Sem Fornecedor'
+            if (!bySupplier[id]) bySupplier[id] = { name, total: 0, pendente: 0, count: 0 }
+            bySupplier[id].total  += o.total_amount
+            bySupplier[id].count  += 1
+            if (o.status === 'enviado' || o.status === 'parcial') bySupplier[id].pendente += o.total_amount
+          }
+          const suppliers = Object.values(bySupplier).sort((a, b) => b.total - a.total)
+          if (suppliers.length < 2) return null
+          return (
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Resumo por Fornecedor</p>
+              <div className="flex flex-wrap gap-3">
+                {suppliers.map(s => (
+                  <div key={s.name} className="flex-1 min-w-[180px] rounded-lg bg-slate-50 border border-slate-100 px-3 py-2.5">
+                    <p className="text-xs font-semibold text-slate-800 truncate">{s.name}</p>
+                    <p className="text-sm font-bold text-slate-900 mt-1">{formatCurrency(s.total)}</p>
+                    <div className="flex gap-3 mt-1 text-[10px] text-slate-400">
+                      <span>{s.count} pedido{s.count !== 1 ? 's' : ''}</span>
+                      {s.pendente > 0 && (
+                        <span className="text-amber-600 font-semibold">{formatCurrency(s.pendente)} pendente</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
+        {loading ? <PageLoader /> : filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
             <ShoppingCart size={36} className="text-slate-300" />
-            <p className="text-slate-500">Nenhum pedido de compra ainda.</p>
+            <p className="text-slate-500">{orders.length === 0 ? 'Nenhum pedido de compra ainda.' : 'Nenhum pedido no período selecionado.'}</p>
             <Button size="sm" icon={<Plus size={14} />} onClick={() => setModal(true)}>
               Criar Primeiro Pedido
             </Button>
           </div>
         ) : (
           <div className="space-y-3">
-            {orders.map(order => (
+            {filtered.map(order => (
               <Card key={order.id} className="overflow-hidden">
                 {/* Linha principal */}
                 <div className="flex items-center gap-4 p-4">

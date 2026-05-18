@@ -429,3 +429,83 @@ export async function downloadAllPdfs(
     await downloadStorePdf(order, company, prescription, 'download')
   }
 }
+
+export function downloadWarrantyPdf(sale: Sale, company: Company) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const number = sale.sale_number
+  const name   = (sale as any).patient?.full_name ?? sale.customer_name ?? 'Cliente'
+  const warrantyMonths = 12
+
+  let y = header(doc, company, 'CERTIFICADO DE GARANTIA', `Venda #${number}`)
+  y = divider(doc, y)
+
+  // Caixa de destaque
+  doc.setFillColor(240, 249, 255)
+  doc.setDrawColor(...BRAND)
+  doc.setLineWidth(0.5)
+  doc.roundedRect(12, y, 186, 24, 3, 3, 'FD')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(13)
+  doc.setTextColor(...BRAND)
+  doc.text(`GARANTIA DE ${warrantyMonths} MESES`, 105, y + 10, { align: 'center' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(...SLATE)
+  const expiry = new Date(sale.created_at)
+  expiry.setMonth(expiry.getMonth() + warrantyMonths)
+  doc.text(`Válida até: ${fmtDate(expiry.toISOString())}`, 105, y + 18, { align: 'center' })
+  y += 30
+
+  // Dados do cliente e venda
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...SLATE)
+  doc.text('DADOS DO CLIENTE', 12, y); y += 5
+  doc.setTextColor(...BLACK)
+  y = labelValue(doc, 'Cliente:', name, 12, y)
+  y = labelValue(doc, 'Data Compra:', fmtDate(sale.created_at), 12, y)
+  y = labelValue(doc, 'Nº Venda:', `#${number}`, 12, y)
+  y = divider(doc, y + 1)
+
+  // Itens
+  const items = (sale.items ?? []) as any[]
+  if (items.length) {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...SLATE)
+    doc.text('PRODUTOS COBERTOS', 12, y); y += 4
+    autoTable(doc, {
+      startY: y,
+      margin: { left: 12, right: 12 },
+      head: [['Produto', 'Qtd']],
+      body: items.map(i => [i.description, i.quantity]),
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: BRAND, textColor: [255, 255, 255] },
+      columnStyles: { 1: { halign: 'center', cellWidth: 20 } },
+    })
+    y = (doc as any).lastAutoTable.finalY + 6
+  }
+
+  // Termos
+  y = divider(doc, y)
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...SLATE)
+  doc.text('CONDIÇÕES DA GARANTIA', 12, y); y += 5
+  const terms = [
+    `A garantia cobre defeitos de fabricação pelos ${warrantyMonths} meses a partir da data de compra.`,
+    'Não cobre danos causados por mau uso, quedas, umidade ou uso indevido.',
+    'Para acionar a garantia, apresente este certificado junto ao produto.',
+    'O prazo de reparo ou substituição é de até 30 dias após a verificação do defeito.',
+  ]
+  doc.setFont('helvetica', 'normal'); doc.setTextColor(...SLATE); doc.setFontSize(8)
+  for (const term of terms) {
+    doc.text(`• ${term}`, 15, y, { maxWidth: 180 })
+    y += 6
+  }
+
+  // Assinaturas
+  y = Math.max(y + 10, 240)
+  divider(doc, y)
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...SLATE)
+  doc.line(12, y + 14, 90, y + 14)
+  doc.line(110, y + 14, 198, y + 14)
+  doc.text('Assinatura do Cliente', 51, y + 18, { align: 'center' })
+  doc.text(`${company.name}`, 154, y + 18, { align: 'center' })
+
+  outputDoc(doc, `garantia-${number}.pdf`, 'download')
+}

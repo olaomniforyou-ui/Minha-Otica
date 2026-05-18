@@ -446,6 +446,49 @@ export interface PostSale {
 
 export type PostSaleFormData = Omit<PostSale, 'id' | 'company_id' | 'created_at'>
 
+// ── DESPESAS / CONTAS A PAGAR ────────────────────────────────
+export type ExpenseCategory =
+  | 'aluguel'
+  | 'energia'
+  | 'agua'
+  | 'internet'
+  | 'fornecedor'
+  | 'salario'
+  | 'marketing'
+  | 'manutencao'
+  | 'impostos'
+  | 'outro'
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
+  aluguel:     'Aluguel',
+  energia:     'Energia',
+  agua:        'Água',
+  internet:    'Internet/Tel',
+  fornecedor:  'Fornecedor',
+  salario:     'Salário/Pró-labore',
+  marketing:   'Marketing',
+  manutencao:  'Manutenção',
+  impostos:    'Impostos',
+  outro:       'Outro',
+}
+
+export interface Expense {
+  id: string
+  company_id: string
+  description: string
+  amount: number
+  category: ExpenseCategory
+  due_date: string
+  paid_at?: string
+  is_paid: boolean
+  notes?: string
+  created_by?: string
+  created_at: string
+  updated_at: string
+}
+
+export type ExpenseFormData = Omit<Expense, 'id' | 'company_id' | 'created_at' | 'updated_at'>
+
 // ── COMPRAS ──────────────────────────────────────────────────
 export type PurchaseOrderStatus = 'rascunho' | 'enviado' | 'parcial' | 'recebido' | 'cancelado'
 
@@ -673,4 +716,87 @@ export interface CompanyWithSubscription extends Company {
   subscription?: Subscription
   user_count?: number
   patient_count?: number
+}
+
+// ── CONVÊNIOS ────────────────────────────────────────────────
+export type ConvenioTipo = 'saude' | 'odonto' | 'assistencia' | 'outro'
+
+export const CONVENIO_TIPO_LABELS: Record<ConvenioTipo, string> = {
+  saude:       'Plano de Saúde',
+  odonto:      'Plano Odontológico',
+  assistencia: 'Assistência Técnica',
+  outro:       'Outro',
+}
+
+export interface Convenio {
+  id: string
+  company_id: string
+  name: string
+  cnpj?: string
+  tipo: ConvenioTipo
+  desconto_percentual: number
+  contato_nome?: string
+  contato_telefone?: string
+  contato_email?: string
+  observacoes?: string
+  is_active: boolean
+  created_by?: string
+  created_at: string
+  updated_at: string
+}
+
+export type ConvenioFormData = Omit<Convenio, 'id' | 'company_id' | 'created_at' | 'updated_at'>
+
+// ── AUTORIZAÇÕES DE CONVÊNIO ──────────────────────────────────
+export type AutorizacaoStatus = 'pendente' | 'aprovado' | 'negado' | 'vencido'
+
+export const AUTORIZACAO_STATUS_LABELS: Record<AutorizacaoStatus, string> = {
+  pendente: 'Pendente',
+  aprovado: 'Aprovado',
+  negado:   'Negado',
+  vencido:  'Vencido',
+}
+
+export interface ConvenioAutorizacao {
+  id: string
+  company_id: string
+  convenio_id: string
+  patient_id: string
+  auth_number: string
+  procedure?: string
+  valid_from?: string
+  valid_until?: string
+  status: AutorizacaoStatus
+  notes?: string
+  created_at: string
+  updated_at: string
+  convenio?: { id: string; name: string }
+  patient?: { id: string; full_name: string }
+}
+
+export type ConvenioAutorizacaoFormData = {
+  convenio_id: string
+  patient_id: string
+  auth_number: string
+  procedure?: string
+  valid_from?: string
+  valid_until?: string
+  status: AutorizacaoStatus
+  notes?: string
+}
+
+// ── COMISSÕES ────────────────────────────────────────────────
+export interface CommissionRule {
+  seller_id: string
+  seller_name: string
+  percentual: number
+}
+
+export interface SellerPerformance {
+  seller_id: string
+  seller_name: string
+  total_vendas: number
+  qtd_vendas: number
+  percentual_comissao: number
+  valor_comissao: number
 }

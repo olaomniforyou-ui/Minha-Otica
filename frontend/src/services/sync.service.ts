@@ -179,6 +179,28 @@ export async function pullFromServer() {
       .in('sale_id', saleIds)
     if (saleItems?.length) await db.sale_items.bulkPut(saleItems)
   }
+
+  // Despesas (Contas a Pagar)
+  const expenses = await fetchTable('expenses')
+  if (expenses.length) await db.expenses.bulkPut(expenses)
+
+  // Pedidos de Compra
+  const purchaseOrders = await fetchTable('purchase_orders')
+  if (purchaseOrders.length) await db.purchase_orders.bulkPut(purchaseOrders)
+
+  // Itens de Pedidos de Compra
+  if (purchaseOrders.length) {
+    const poIds = purchaseOrders.map((po: { id: string }) => po.id)
+    const { data: purchaseItems } = await supabase
+      .from('purchase_items')
+      .select('*')
+      .in('purchase_order_id', poIds)
+    if (purchaseItems?.length) await db.purchase_items.bulkPut(purchaseItems)
+  }
+
+  // Convênios
+  const convenios = await fetchTable('convenios')
+  if (convenios.length) await db.convenios.bulkPut(convenios)
 }
 
 // ── Scheduler automático ──────────────────────────────────────

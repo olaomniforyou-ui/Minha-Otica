@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import type {
   Plan, PlanFormData, SaasStats, SaasAdmin,
-  CompanyWithSubscription, Subscription, SubscriptionHistory,
+  CompanyWithSubscription, Subscription,
 } from '@/types'
 
 export async function getCurrentAdmin(): Promise<SaasAdmin | null> {
@@ -171,6 +171,24 @@ export async function upsertPlan(plan: PlanFormData, id?: string) {
 
 export async function deletePlan(id: string) {
   const { error } = await supabase.from('plans').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ── HIERARQUIA MATRIZ/FILIAL ──────────────────────────────────
+export async function getFiliais(matrizId: string) {
+  const { data } = await supabase
+    .from('companies')
+    .select('id, name, cnpj, is_active')
+    .eq('parent_company_id', matrizId)
+    .order('name')
+  return data || []
+}
+
+export async function setParentCompany(companyId: string, parentId: string | null) {
+  const { error } = await supabase
+    .from('companies')
+    .update({ parent_company_id: parentId })
+    .eq('id', companyId)
   if (error) throw error
 }
 

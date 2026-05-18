@@ -3,53 +3,53 @@ import { Plus, Search, MoreVertical, Shield, User, Phone, CheckCircle2, XCircle,
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Badge } from '@/components/ui/Badge'
 import { PageLoader } from '@/components/ui/Spinner'
 import { getEmployees, updateEmployee, deleteEmployee } from '@/services/employees.service'
+import { InviteEmployeeModal } from '@/components/employees/InviteEmployeeModal'
+import { EditEmployeeModal } from '@/components/employees/EditEmployeeModal'
 import { Dropdown, DropdownItem } from '@/components/ui/Dropdown'
 import { Modal } from '@/components/ui/Modal'
 import { cn, getInitials } from '@/lib/utils'
 import type { Profile, UserRole } from '@/types'
 
 const ROLE_LABELS: Record<UserRole, string> = {
-  admin:    'Administrador',
-  gerente:  'Gerente',
+  admin:     'Administrador',
+  gerente:   'Gerente',
   atendente: 'Atendente',
-  tecnico:  'Técnico'
+  tecnico:   'Técnico'
 }
 
 const ROLE_COLORS: Record<UserRole, string> = {
-  admin:    'bg-purple-100 text-purple-700 border-purple-200',
-  gerente:  'bg-blue-100 text-blue-700 border-blue-200',
+  admin:     'bg-purple-100 text-purple-700 border-purple-200',
+  gerente:   'bg-blue-100 text-blue-700 border-blue-200',
   atendente: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  tecnico:  'bg-amber-100 text-amber-700 border-amber-200'
+  tecnico:   'bg-amber-100 text-amber-700 border-amber-200'
 }
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState<Profile[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+  const [employees,       setEmployees]       = useState<Profile[]>([])
+  const [loading,         setLoading]         = useState(true)
+  const [search,          setSearch]          = useState('')
   const [editingEmployee, setEditingEmployee] = useState<Profile | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [selectedEmployee, setSelectedEmployee] = useState<Profile | null>(null)
+  const [selectedEmployee,  setSelectedEmployee]  = useState<Profile | null>(null)
+  const [showInvite,      setShowInvite]      = useState(false)
+  const [errorMsg,        setErrorMsg]        = useState<string | null>(null)
 
-  useEffect(() => {
-    loadEmployees()
-  }, [])
+  useEffect(() => { loadEmployees() }, [])
 
   async function loadEmployees() {
     setLoading(true)
     try {
-      const data = await getEmployees()
-      setEmployees(data)
-    } catch (err) {
-      console.error(err)
+      setEmployees(await getEmployees())
+    } catch (err: any) {
+      setErrorMsg(err.message)
     } finally {
       setLoading(false)
     }
   }
 
-  const filtered = employees.filter(e => 
+  const filtered = employees.filter(e =>
     e.full_name.toLowerCase().includes(search.toLowerCase()) ||
     e.role.toLowerCase().includes(search.toLowerCase())
   )
@@ -58,8 +58,8 @@ export default function EmployeesPage() {
     try {
       await updateEmployee(employee.id, { is_active: !employee.is_active })
       loadEmployees()
-    } catch (err) {
-      alert('Erro ao atualizar status.')
+    } catch (err: any) {
+      setErrorMsg(err.message)
     }
   }
 
@@ -70,8 +70,8 @@ export default function EmployeesPage() {
       setShowDeleteConfirm(false)
       setSelectedEmployee(null)
       loadEmployees()
-    } catch (err) {
-      alert('Erro ao excluir funcionário.')
+    } catch (err: any) {
+      setErrorMsg(err.message)
     }
   }
 
@@ -82,15 +82,22 @@ export default function EmployeesPage() {
           <h1 className="text-2xl font-bold text-slate-900">Funcionários</h1>
           <p className="text-sm text-slate-500">Gerencie a equipe e permissões de acesso</p>
         </div>
-        <Button icon={<Plus size={16} />} onClick={() => alert('Para adicionar um novo funcionário, convide-o via e-mail (funcionalidade em integração).')}>
+        <Button icon={<Plus size={16} />} onClick={() => setShowInvite(true)}>
           Novo Funcionário
         </Button>
       </div>
 
+      {errorMsg && (
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          {errorMsg}
+          <button onClick={() => setErrorMsg(null)} className="ml-3 font-bold hover:underline">Fechar</button>
+        </div>
+      )}
+
       <Card className="p-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <Input 
+          <Input
             className="pl-10"
             placeholder="Buscar por nome ou cargo..."
             value={search}
@@ -111,16 +118,16 @@ export default function EmployeesPage() {
           {filtered.map(employee => (
             <Card key={employee.id} className="relative overflow-hidden group">
               <div className={cn(
-                "absolute top-0 left-0 w-1.5 h-full",
-                employee.is_active ? "bg-primary-600" : "bg-slate-300"
+                'absolute top-0 left-0 w-1.5 h-full',
+                employee.is_active ? 'bg-primary-600' : 'bg-slate-300'
               )} />
-              
+
               <div className="p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-lg font-bold text-slate-600 border border-slate-200">
+                    <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-lg font-bold text-slate-600 border border-slate-200 overflow-hidden">
                       {employee.avatar_url ? (
-                        <img src={employee.avatar_url} alt={employee.full_name} className="h-full w-full rounded-full object-cover" />
+                        <img src={employee.avatar_url} alt={employee.full_name} className="h-full w-full object-cover" />
                       ) : (
                         getInitials(employee.full_name)
                       )}
@@ -129,7 +136,7 @@ export default function EmployeesPage() {
                       <h3 className="font-bold text-slate-900 leading-tight">{employee.full_name}</h3>
                       <div className="mt-1 flex items-center gap-2">
                         <span className={cn(
-                          "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border",
+                          'px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border',
                           ROLE_COLORS[employee.role]
                         )}>
                           {ROLE_LABELS[employee.role]}
@@ -150,15 +157,22 @@ export default function EmployeesPage() {
                       </button>
                     }
                   >
-                    <DropdownItem icon={<Edit2 size={14} />} onClick={() => alert('Edição de perfil em breve.')}>Editar Perfil</DropdownItem>
-                    <DropdownItem 
-                      icon={employee.is_active ? <XCircle size={14} className="text-amber-500" /> : <CheckCircle2 size={14} className="text-emerald-500" />} 
+                    <DropdownItem icon={<Edit2 size={14} />} onClick={() => setEditingEmployee(employee)}>
+                      Editar Perfil
+                    </DropdownItem>
+                    <DropdownItem
+                      icon={employee.is_active
+                        ? <XCircle size={14} className="text-amber-500" />
+                        : <CheckCircle2 size={14} className="text-emerald-500" />}
                       onClick={() => handleToggleStatus(employee)}
                     >
                       {employee.is_active ? 'Desativar' : 'Ativar'}
                     </DropdownItem>
                     <div className="h-px bg-slate-50 my-1" />
-                    <DropdownItem icon={<Trash2 size={14} className="text-red-500" />} onClick={() => { setSelectedEmployee(employee); setShowDeleteConfirm(true); }}>
+                    <DropdownItem
+                      icon={<Trash2 size={14} className="text-red-500" />}
+                      onClick={() => { setSelectedEmployee(employee); setShowDeleteConfirm(true) }}
+                    >
                       Excluir
                     </DropdownItem>
                   </Dropdown>
@@ -167,7 +181,7 @@ export default function EmployeesPage() {
                 <div className="mt-6 space-y-2.5">
                   <div className="flex items-center gap-2.5 text-sm text-slate-500">
                     <Mail size={14} className="text-slate-400" />
-                    <span className="truncate">E-mail oculto p/ segurança</span>
+                    <span className="truncate text-slate-400 italic text-xs">E-mail oculto por segurança</span>
                   </div>
                   {employee.phone && (
                     <div className="flex items-center gap-2.5 text-sm text-slate-500">
@@ -177,7 +191,7 @@ export default function EmployeesPage() {
                   )}
                   <div className="flex items-center gap-2.5 text-sm text-slate-500">
                     <Shield size={14} className="text-slate-400" />
-                    <span>Membro desde {new Date(employee.created_at).toLocaleDateString()}</span>
+                    <span>Membro desde {new Date(employee.created_at).toLocaleDateString('pt-BR')}</span>
                   </div>
                 </div>
               </div>
@@ -186,15 +200,27 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {/* Confirmação de Exclusão */}
-      <Modal open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Excluir Funcionário" size="sm">
+      <InviteEmployeeModal
+        open={showInvite}
+        onClose={() => setShowInvite(false)}
+        onSuccess={() => { setShowInvite(false); loadEmployees() }}
+      />
+
+      <EditEmployeeModal
+        open={editingEmployee !== null}
+        onClose={() => setEditingEmployee(null)}
+        onSuccess={() => { setEditingEmployee(null); loadEmployees() }}
+        employee={editingEmployee}
+      />
+
+      <Modal open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Desativar Funcionário" size="sm">
         <div className="py-4">
           <p className="text-sm text-slate-600">
-            Tem certeza que deseja excluir <span className="font-bold text-slate-900">{selectedEmployee?.full_name}</span>? 
-            Esta ação desativará o acesso deste usuário ao sistema.
+            Tem certeza que deseja desativar <span className="font-bold text-slate-900">{selectedEmployee?.full_name}</span>?
+            O acesso ao sistema será bloqueado.
           </p>
           <div className="mt-6 flex flex-col gap-2">
-            <Button variant="danger" onClick={handleDelete}>Confirmar Exclusão</Button>
+            <Button variant="danger" onClick={handleDelete}>Confirmar Desativação</Button>
             <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>Cancelar</Button>
           </div>
         </div>

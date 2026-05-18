@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { db, enqueue } from '@/db'
+import { enqueue } from '@/db'
 import { generateId } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import type { PostSale, PostSaleFormData } from '@/types'
@@ -22,6 +22,23 @@ export async function getPatientPostSales(patientId: string): Promise<PostSale[]
         .eq('company_id', company_id)
         .order('created_at', { ascending: false })
       if (data) return data as PostSale[]
+    } catch {}
+  }
+
+  return []
+}
+
+export async function getAllPostSales(): Promise<(PostSale & { patient?: { id: string; full_name: string } })[]> {
+  const company_id = getCompanyId()
+
+  if (navigator.onLine) {
+    try {
+      const { data } = await supabase
+        .from('post_sales')
+        .select('*, patient:patients!patient_id(id, full_name)')
+        .eq('company_id', company_id)
+        .order('created_at', { ascending: false })
+      if (data) return data as (PostSale & { patient?: { id: string; full_name: string } })[]
     } catch {}
   }
 

@@ -9,12 +9,15 @@ interface AuthState {
   company: Company | null
   availableProfiles: Profile[]
   isLoading: boolean
+  originalCompany: Company | null
   setSession: (session: Session | null) => void
   setProfile: (profile: Profile | null) => void
   setCompany: (company: Company | null) => void
   setAvailableProfiles: (profiles: Profile[]) => void
   setLoading: (loading: boolean) => void
   reset: () => void
+  startImpersonate: (company: Company) => void
+  stopImpersonate: () => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -25,6 +28,7 @@ export const useAuthStore = create<AuthState>()(
       company: null,
       availableProfiles: [],
       isLoading: false,
+      originalCompany: null,
 
       setSession: (session) => set({ session }),
       setProfile: (profile) => set({ profile }),
@@ -33,7 +37,13 @@ export const useAuthStore = create<AuthState>()(
       setLoading: (isLoading) => set({ isLoading }),
 
       reset: () =>
-        set({ session: null, profile: null, company: null, availableProfiles: [], isLoading: false }),
+        set({ session: null, profile: null, company: null, availableProfiles: [], isLoading: false, originalCompany: null }),
+
+      startImpersonate: (company) =>
+        set(state => ({ originalCompany: state.company, company })),
+
+      stopImpersonate: () =>
+        set(state => ({ company: state.originalCompany, originalCompany: null })),
     }),
     {
       name: 'minha-otica-auth',
@@ -41,6 +51,7 @@ export const useAuthStore = create<AuthState>()(
         profile: state.profile,
         company: state.company,
         availableProfiles: state.availableProfiles,
+        originalCompany: state.originalCompany,
       }),
     },
   ),

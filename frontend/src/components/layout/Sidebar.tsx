@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ShoppingCart, Package, Truck, ArrowLeftRight,
   Users, User, ClipboardList, FlaskConical, BarChart3, Wallet,
   HelpCircle, LogOut, Eye, Menu, X, PlusCircle, Contact, Building2,
-  ShoppingBag, Code2
+  Code2, ClipboardCheck, TrendingUp, Star, CreditCard, MessageCircle, QrCode, FileText
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { signOut } from '@/services/auth.service'
@@ -41,12 +41,28 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/orders',     label: 'Orçamentos',   icon: ClipboardList },
       { to: '/sales',      label: 'Vendas / PDV', icon: ShoppingCart },
       { to: '/lab',        label: 'Laboratório',  icon: FlaskConical },
+      { to: '/convenios',  label: 'Convênios',    icon: ClipboardCheck },
+      { to: '/post-sales', label: 'Pós-venda',    icon: Star },
     ]
   },
   {
     group: 'Financeiro',
     items: [
       { to: '/financial',  label: 'Financeiro',   icon: Wallet },
+      { to: '/comissoes',  label: 'Comissões',    icon: TrendingUp },
+      { to: '/pix',        label: 'Pix',          icon: QrCode },
+    ]
+  },
+  {
+    group: 'Comunicação',
+    items: [
+      { to: '/whatsapp',   label: 'WhatsApp',     icon: MessageCircle },
+    ]
+  },
+  {
+    group: 'Tributário',
+    items: [
+      { to: '/fiscal',     label: 'Fiscal',        icon: FileText },
     ]
   },
   {
@@ -136,6 +152,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                     to={to}
                     end={to === '/'}
                     onClick={onClose}
+                    data-tour={`nav-${to.slice(1) || 'dashboard'}`}
                     className={({ isActive }) =>
                       cn(
                         'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
@@ -157,6 +174,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           <div className="pt-4 border-t border-slate-50">
             <button
               onClick={handleNewPrescription}
+              data-tour="quick-order"
               className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-bold text-blue-600 hover:bg-blue-50 transition-all"
             >
               <PlusCircle className="h-4 w-4" />
@@ -242,11 +260,39 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             Meu Perfil
           </NavLink>
 
-          {/* Suporte */}
-          <button className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors">
+          {/* Planos */}
+          <NavLink
+            to="/pricing"
+            onClick={onClose}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
+              )
+            }
+          >
+            <CreditCard size={18} />
+            Planos
+          </NavLink>
+
+          {/* Ajuda */}
+          <NavLink
+            to="/help"
+            onClick={onClose}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
+              )
+            }
+          >
             <HelpCircle size={18} />
-            Suporte
-          </button>
+            Ajuda
+          </NavLink>
 
           {/* Logout */}
           <button

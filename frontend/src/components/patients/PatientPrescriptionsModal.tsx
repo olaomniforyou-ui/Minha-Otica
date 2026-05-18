@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, FileText, Pencil, Trash2, AlertTriangle, Clock, CheckCircle2, Loader2, ExternalLink, Paperclip } from 'lucide-react'
+import { Plus, FileText, Pencil, Trash2, AlertTriangle, Clock, CheckCircle2, Loader2, Paperclip, Printer } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { PrescriptionModal } from './PrescriptionModal'
 import { getPatientPrescriptions, deletePrescription } from '@/services/prescriptions.service'
 import { formatDate, cn } from '@/lib/utils'
+import { useAuthStore } from '@/store/authStore'
 import type { Patient, Prescription } from '@/types'
 
 interface Props {
@@ -59,15 +60,68 @@ function fmtInt(v?: number): string {
   return v !== undefined && v !== null ? String(v) : '—'
 }
 
+// ─── Imprimir receita ────────────────────────────────────────────────────
+function printPrescription(rx: Prescription, patientName: string, companyName: string) {
+  const fmtOpt = (v?: number) => v !== undefined && v !== null ? (v > 0 ? `+${v.toFixed(2)}` : v.toFixed(2)) : '—'
+  const fmtInt = (v?: number) => v !== undefined && v !== null ? String(v) : '—'
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"/>
+<title>Receita Óptica — ${patientName}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #1e293b; padding: 32px; max-width: 700px; margin: auto; }
+  h1 { font-size: 18px; font-weight: 700; color: #3730a3; margin-bottom: 2px; }
+  .sub { font-size: 11px; color: #64748b; margin-bottom: 20px; }
+  .section { margin-bottom: 16px; }
+  .label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; margin-bottom: 4px; }
+  .value { font-size: 13px; font-weight: 600; color: #1e293b; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  th, td { border: 1px solid #e2e8f0; padding: 6px 10px; text-align: center; font-size: 12px; }
+  th { background: #f8fafc; font-weight: 700; font-size: 11px; }
+  .eye-od { background: #eff6ff; font-weight: 700; color: #1d4ed8; }
+  .eye-oe { background: #eef2ff; font-weight: 700; color: #4338ca; }
+  .notes { margin-top: 12px; padding: 10px 12px; background: #f8fafc; border-left: 3px solid #6366f1; font-style: italic; color: #475569; font-size: 12px; }
+  .footer { margin-top: 32px; padding-top: 16px; border-top: 1px dashed #cbd5e1; display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; }
+  .sig { margin-top: 48px; text-align: center; font-size: 11px; color: #64748b; }
+  .sig-line { border-top: 1px solid #94a3b8; width: 200px; margin: 0 auto 4px; }
+  @media print { body { padding: 16px; } }
+</style></head><body>
+  <h1>${companyName}</h1>
+  <p class="sub">Receita Óptica</p>
+  <div style="display:flex;gap:24px;margin-bottom:16px">
+    <div class="section"><p class="label">Paciente</p><p class="value">${patientName}</p></div>
+    ${rx.exam_date ? `<div class="section"><p class="label">Data do Exame</p><p class="value">${formatDate(rx.exam_date)}</p></div>` : ''}
+    ${rx.valid_until ? `<div class="section"><p class="label">Válida até</p><p class="value">${formatDate(rx.valid_until)}</p></div>` : ''}
+  </div>
+  <table>
+    <thead><tr><th></th><th>Esférico</th><th>Cilíndrico</th><th>Eixo</th><th>Add</th><th>DNP</th><th>Altura</th></tr></thead>
+    <tbody>
+      <tr><td class="eye-od">OD</td><td>${fmtOpt(rx.od_esf)}</td><td>${fmtOpt(rx.od_cil)}</td><td>${fmtInt(rx.od_eixo)}${rx.od_eixo !== undefined && rx.od_eixo !== null ? '°' : ''}</td><td>${fmtOpt(rx.od_add)}</td><td>${fmtOpt(rx.od_dnp)}</td><td>${fmtInt(rx.od_altura)}</td></tr>
+      <tr><td class="eye-oe">OE</td><td>${fmtOpt(rx.oe_esf)}</td><td>${fmtOpt(rx.oe_cil)}</td><td>${fmtInt(rx.oe_eixo)}${rx.oe_eixo !== undefined && rx.oe_eixo !== null ? '°' : ''}</td><td>${fmtOpt(rx.oe_add)}</td><td>${fmtOpt(rx.oe_dnp)}</td><td>${fmtInt(rx.oe_altura)}</td></tr>
+    </tbody>
+  </table>
+  ${rx.lens_type ? `<p style="margin-top:10px;font-size:12px;color:#475569">Tipo de lente: <strong>${rx.lens_type}</strong></p>` : ''}
+  ${rx.notes ? `<div class="notes">${rx.notes}</div>` : ''}
+  ${rx.doctor_name ? `<div class="sig"><div class="sig-line"></div><p>Dr(a). ${rx.doctor_name}${rx.crm ? ` · CRM ${rx.crm}` : ''}</p></div>` : ''}
+  <div class="footer"><span>Gerado por Minha Ótica</span><span>${new Date().toLocaleDateString('pt-BR')}</span></div>
+</body></html>`
+  const w = window.open('', '_blank', 'width=780,height=600')
+  if (!w) return
+  w.document.write(html)
+  w.document.close()
+  setTimeout(() => { w.focus(); w.print() }, 400)
+}
+
 // ─── Card de receita ─────────────────────────────────────────────────────
 function PrescriptionCard({
   prescription,
   onEdit,
   onDelete,
+  onPrint,
 }: {
   prescription: Prescription
   onEdit:       () => void
   onDelete:     () => void
+  onPrint:      () => void
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -141,8 +195,14 @@ function PrescriptionCard({
       )}
 
       {/* Ações */}
-      <div className="flex items-center justify-between gap-2 pt-1">
-        <div>
+      <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onPrint}
+            className="flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-100 transition-colors"
+          >
+            <Printer size={11} /> Imprimir
+          </button>
           {prescription.attachment_url && (
             <a
               href={prescription.attachment_url}
@@ -189,6 +249,7 @@ function PrescriptionCard({
 
 // ─── Modal principal ──────────────────────────────────────────────────────
 export function PatientPrescriptionsModal({ open, onClose, patient }: Props) {
+  const company = useAuthStore(s => s.company)
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
   const [loading,       setLoading]       = useState(true)
   const [editTarget,    setEditTarget]    = useState<Prescription | null>(null)
@@ -273,6 +334,7 @@ export function PatientPrescriptionsModal({ open, onClose, patient }: Props) {
                   prescription={p}
                   onEdit={() => openEdit(p)}
                   onDelete={() => handleDelete(p.id)}
+                  onPrint={() => printPrescription(p, patient.full_name, company?.name ?? 'Minha Ótica')}
                 />
               ))}
             </div>

@@ -50,7 +50,7 @@ function calcRow(row: ItemRow): ItemRow {
   return { ...row, total_price: total }
 }
 
-import { downloadClientPdf, downloadAllPdfs } from '@/lib/generatePdf'
+import { downloadClientPdf, downloadAllPdfs, downloadWarrantyPdf } from '@/lib/generatePdf'
 import { useAuthStore } from '@/store/authStore'
 import { PrintOptionsModal } from './PrintOptionsModal'
 
@@ -215,8 +215,13 @@ export function SaleModal({ open, onClose, onSaved, sale }: SaleModalProps) {
       return
     }
 
-    // Placeholder para as outras ações
-    alert(`Gerando ${type}... Funcionalidade em desenvolvimento.`)
+    if (type === 'garantia' && completedSale) {
+      const company = useAuthStore.getState().company
+      if (company) downloadWarrantyPdf(completedSale, company)
+    }
+    if (type === 'comprovante' && completedSale) {
+      setShowPrintOptions(true)
+    }
     setShowPrintOptions(false)
   }
 

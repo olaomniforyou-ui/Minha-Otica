@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { 
-  ShoppingCart, TrendingUp, Receipt, Plus, FileText, 
-  MessageCircle, FileCheck, MoreVertical, Eye, Edit2, Trash2, ShieldCheck 
+import {
+  ShoppingCart, TrendingUp, Receipt, Plus, FileText, Download,
+  MessageCircle, FileCheck, MoreVertical, Eye, Edit2, Trash2, ShieldCheck, QrCode
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -21,8 +21,15 @@ const COLORS = ['bg-blue-500','bg-emerald-500','bg-violet-500','bg-rose-500','bg
 const colorOf = (name: string) =>
   COLORS[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length]
 
+interface PixSettings { keyType: string; keyValue: string; receiverName: string; city: string }
+const PIX_SETTINGS_KEY = 'pix_settings_v1'
+function loadPixSettings(): PixSettings | null {
+  try { return JSON.parse(localStorage.getItem(PIX_SETTINGS_KEY) ?? 'null') } catch { return null }
+}
+
 import { PrintOptionsModal } from '@/components/sales/PrintOptionsModal'
-import { downloadClientPdf, downloadAllPdfs } from '@/lib/generatePdf'
+import { downloadClientPdf, downloadAllPdfs, downloadWarrantyPdf } from '@/lib/generatePdf'
+import { exportSalesCsv } from '@/lib/exportCsv'
 
 export default function SalesPage() {
   const [sales,   setSales]   = useState<Sale[]>([])
@@ -34,6 +41,9 @@ export default function SalesPage() {
   const [showDetails,       setShowDetails]       = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [editingSale,       setEditingSale]       = useState<Sale | null>(null)
+  const [pixSale,           setPixSale]           = useState<Sale | null>(null)
+  const [errorMsg,          setErrorMsg]          = useState<string | null>(null)
+  const [infoMsg,           setInfoMsg]           = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -77,8 +87,14 @@ export default function SalesPage() {
     window.open(url, '_blank')
   }
 
-  const handleInvoice = (s: Sale) => {
-    alert(`Gerando Nota Fiscal para a venda #${s.sale_number}... Funcionalidade em integração.`)
+  const handleInvoice = (_s: Sale) => {
+    setInfoMsg('Emissão de NF-e será disponibilizada no módulo Fiscal (Sprint 6). Integração com certificado digital A1.')
+  }
+
+  const handleWarranty = (s: Sale) => {
+    const company = useAuthStore.getState().company
+    if (!company) return
+    downloadWarrantyPdf(s, company)
   }
 
   const handleDelete = async () => {
@@ -88,20 +104,38 @@ export default function SalesPage() {
       setShowDeleteConfirm(false)
       setSelectedSale(null)
       load()
-    } catch (err) {
-      alert('Erro ao excluir venda.')
+    } catch (err: any) {
+      setErrorMsg(err.message ?? 'Erro ao excluir venda.')
     }
   }
 
   return (
     <div className="space-y-5">
+      {errorMsg && (
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
+          <span>{errorMsg}</span>
+          <button onClick={() => setErrorMsg(null)} className="ml-3 font-bold hover:underline">✕</button>
+        </div>
+      )}
+      {infoMsg && (
+        <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700 flex items-center justify-between">
+          <span>{infoMsg}</span>
+          <button onClick={() => setInfoMsg(null)} className="ml-3 font-bold hover:underline">✕</button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Vendas</h1>
           <p className="text-sm text-slate-500">Vendas diretas — itens prontos, pagamento imediato</p>
         </div>
-        <Button icon={<Plus size={16} />} onClick={() => setModal(true)}>Nova Venda</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" icon={<Download size={14}/>} onClick={() => exportSalesCsv(sales)}>
+            CSV
+          </Button>
+          <Button icon={<Plus size={16} />} onClick={() => setModal(true)}>Nova Venda</Button>
+        </div>
       </div>
 
       {/* Estatísticas do dia */}
@@ -242,8 +276,9 @@ export default function SalesPage() {
                                 <DropdownItem icon={<Eye size={14} className="text-blue-500" />} onClick={() => { setSelectedSale(s); setShowDetails(true); }}>Visualizar Detalhes</DropdownItem>
                                 <DropdownItem icon={<Edit2 size={14} className="text-amber-500" />} onClick={() => setEditingSale(s)}>Editar Venda</DropdownItem>
                                 <div className="h-px bg-slate-50 my-1" />
-                                <DropdownItem icon={<ShieldCheck size={14} className="text-slate-400" />} onClick={() => alert('Gerando Garantia...')}>Garantia</DropdownItem>
-                                <DropdownItem icon={<Receipt size={14} className="text-slate-400" />} onClick={() => alert('Gerando Comprovante...')}>Comprovante</DropdownItem>
+                                <DropdownItem icon={<ShieldCheck size={14} className="text-emerald-500" />} onClick={() => handleWarranty(s)}>Garantia (PDF)</DropdownItem>
+                                <DropdownItem icon={<Receipt size={14} className="text-blue-500" />} onClick={() => handlePdfClick(s)}>Comprovante (PDF)</DropdownItem>
+                                <DropdownItem icon={<QrCode size={14} className="text-indigo-500" />} onClick={() => setPixSale(s)}>Cobrar via Pix</DropdownItem>
                                 <div className="h-px bg-slate-50 my-1" />
                                 <DropdownItem icon={<Trash2 size={14} className="text-red-500" />} onClick={() => { setSelectedSale(s); setShowDeleteConfirm(true); }}>Excluir Registro</DropdownItem>
                               </Dropdown>
@@ -320,6 +355,7 @@ export default function SalesPage() {
                         >
                           <DropdownItem icon={<Eye size={14} />} onClick={() => { setSelectedSale(s); setShowDetails(true); }}>Visualizar</DropdownItem>
                           <DropdownItem icon={<Edit2 size={14} />} onClick={() => setEditingSale(s)}>Editar</DropdownItem>
+                          <DropdownItem icon={<QrCode size={14} />} onClick={() => setPixSale(s)}>Cobrar Pix</DropdownItem>
                           <DropdownItem icon={<Trash2 size={14} />} onClick={() => { setSelectedSale(s); setShowDeleteConfirm(true); }}>Excluir</DropdownItem>
                         </Dropdown>
                       </div>
@@ -372,6 +408,63 @@ export default function SalesPage() {
         }}
         onSelect={handlePrint}
       />
+
+      {/* Modal Cobrar via Pix */}
+      {pixSale && (
+        <Modal open={!!pixSale} onClose={() => setPixSale(null)} title="Cobrar via Pix" size="sm">
+          {(() => {
+            const settings = loadPixSettings()
+            return (
+              <div className="space-y-4 py-2">
+                <div className="text-center">
+                  <p className="text-xs text-slate-500 mb-1">
+                    Venda #{pixSale.sale_number} — {customerLabel(pixSale)}
+                  </p>
+                  <p className="text-3xl font-bold text-slate-900">{formatCurrency(pixSale.total_amount)}</p>
+                </div>
+                {settings ? (
+                  <>
+                    <div className="flex justify-center">
+                      <img
+                        src={`https://gerarqrcodepix.com.br/api/v1?nome=${encodeURIComponent(settings.receiverName)}&cidade=${encodeURIComponent(settings.city)}&chave=${encodeURIComponent(settings.keyValue)}&valor=${pixSale.total_amount.toFixed(2)}&saida=qr`}
+                        alt="QR Code Pix"
+                        className="w-48 h-48 rounded-xl border border-slate-200"
+                      />
+                    </div>
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-slate-400 uppercase font-bold mb-0.5">Chave Pix</p>
+                        <p className="text-sm font-mono font-semibold text-slate-800 truncate">{settings.keyValue}</p>
+                      </div>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(settings.keyValue)}
+                        className="flex-shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 transition-colors"
+                      >
+                        Copiar
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const phone = pixSale.patient?.whatsapp || pixSale.patient?.phone || ''
+                        const text = `Olá! Sua compra de ${formatCurrency(pixSale.total_amount)} pode ser paga via Pix.\nChave: ${settings.keyValue}\nAgradecemos a preferência!`
+                        window.open(`https://wa.me/55${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank')
+                      }}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-600 transition-colors"
+                    >
+                      <MessageCircle size={15} /> Enviar via WhatsApp
+                    </button>
+                  </>
+                ) : (
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-4 text-sm text-amber-700 text-center">
+                    Configure sua chave Pix em <strong>Pix &amp; Pagamentos</strong> para gerar o QR Code.
+                  </div>
+                )}
+                <Button variant="ghost" size="sm" onClick={() => setPixSale(null)} className="w-full">Fechar</Button>
+              </div>
+            )
+          })()}
+        </Modal>
+      )}
     </div>
   )
 }

@@ -21,6 +21,7 @@ export function AvatarUpload({
   shape = 'circle',
 }: AvatarUploadProps) {
   const [uploading, setUploading] = useState(false)
+  const [uploadErr, setUploadErr] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const sizes = {
@@ -34,6 +35,7 @@ export function AvatarUpload({
     if (!file) return
 
     setUploading(true)
+    setUploadErr(null)
     try {
       const fileExt = file.name.split('.').pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
@@ -51,7 +53,7 @@ export function AvatarUpload({
 
       onUpload(publicUrl)
     } catch (error: any) {
-      alert('Erro ao fazer upload da imagem: ' + error.message)
+      setUploadErr(error.message ?? 'Erro ao fazer upload.')
     } finally {
       setUploading(false)
     }
@@ -102,6 +104,12 @@ export function AvatarUpload({
         accept="image/*"
         className="hidden"
       />
+
+      {uploadErr && (
+        <p className="absolute -bottom-6 left-0 right-0 text-[10px] text-red-600 text-center whitespace-nowrap">
+          {uploadErr}
+        </p>
+      )}
     </div>
   )
 }

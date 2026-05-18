@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ClipboardList, Plus, ChevronRight, FileText, ShoppingCart, CheckCircle2 } from 'lucide-react'
+import { ClipboardList, Plus, ChevronRight, FileText, ShoppingCart, CheckCircle2, Download } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { OrderStatusBadge } from '@/components/ui/Badge'
@@ -9,6 +9,7 @@ import { formatDate, formatCurrency, getInitials, cn } from '@/lib/utils'
 import { getOrders, getOrderById, updateOrderStatus, convertOrderToSale } from '@/services/orders.service'
 import { pullFromServer } from '@/services/sync.service'
 import { downloadAllPdfs } from '@/lib/generatePdf'
+import { exportOrdersCsv } from '@/lib/exportCsv'
 import { useAuthStore } from '@/store/authStore'
 import type { ServiceOrder, ServiceOrderStatus } from '@/types'
 import { SERVICE_TYPE_LABELS } from '@/types'
@@ -47,6 +48,7 @@ export default function OrdersPage() {
   const [ready,       setReady]       = useState(!navigator.onLine)
   const [modal,       setModal]       = useState(false)
   const [converting,  setConverting]  = useState<string | null>(null)
+  const [errorMsg,    setErrorMsg]    = useState<string | null>(null)
 
   useEffect(() => {
     if (!navigator.onLine) { setReady(true); return }
@@ -75,7 +77,7 @@ export default function OrdersPage() {
       await convertOrderToSale(order.id)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao gerar venda.')
+      setErrorMsg(err instanceof Error ? err.message : 'Erro ao gerar venda.')
     } finally {
       setConverting(null)
     }
@@ -91,6 +93,13 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-5">
+      {errorMsg && (
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
+          <span>{errorMsg}</span>
+          <button onClick={() => setErrorMsg(null)} className="ml-3 font-bold hover:underline">✕</button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -99,7 +108,14 @@ export default function OrdersPage() {
             {orders.length} ordem{orders.length !== 1 ? 's' : ''} · óculos de grau, lentes, reparos
           </p>
         </div>
-        <Button icon={<Plus size={16} />} onClick={() => setModal(true)}>Novo Orçamento</Button>
+        <div className="flex gap-2">
+          {orders.length > 0 && (
+            <Button variant="outline" size="sm" icon={<Download size={14} />} onClick={() => exportOrdersCsv(orders)}>
+              CSV
+            </Button>
+          )}
+          <Button icon={<Plus size={16} />} onClick={() => setModal(true)}>Novo Orçamento</Button>
+        </div>
       </div>
 
       {/* Filtros de status */}

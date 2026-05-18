@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Link } from 'react-router-dom'
@@ -9,6 +10,8 @@ import { cn, formatDateTime, getInitials } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { useSync } from '@/hooks/useSync'
 import { useOnline } from '@/hooks/useOnline'
+import { useNotifications } from '@/hooks/useNotifications'
+import { NotificationsPanel } from './NotificationsPanel'
 import { SidebarToggle } from './Sidebar'
 
 interface HeaderProps {
@@ -21,6 +24,8 @@ export function Header({ onMenuClick, title, subtitle }: HeaderProps) {
   const profile  = useAuthStore((s) => s.profile)
   const isOnline = useOnline()
   const { isSyncing, lastSyncedAt, pendingCount, error, sync } = useSync()
+  const { unreadCount } = useNotifications()
+  const [notifOpen, setNotifOpen] = useState(false)
 
   const today = format(new Date(), "dd 'de' MMMM, yyyy", { locale: ptBR })
   const initials = profile ? getInitials(profile.full_name) : '?'
@@ -97,12 +102,20 @@ export function Header({ onMenuClick, title, subtitle }: HeaderProps) {
         </button>
 
         {/* Notificações */}
-        <button className="relative rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 transition-colors">
-          <Bell size={18} />
-          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-            3
-          </span>
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setNotifOpen(v => !v)}
+            className="relative rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 transition-colors"
+          >
+            <Bell size={18} />
+            {unreadCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          <NotificationsPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
+        </div>
 
         {/* Avatar */}
         <Link 
